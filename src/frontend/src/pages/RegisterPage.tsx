@@ -8,14 +8,25 @@ import { useRegister } from "../hooks/useQueries";
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
+  const [token, setToken] = useState(
+    () => new URLSearchParams(window.location.search).get("invite") ?? "",
+  );
   const { mutate: register, isPending, error } = useRegister();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    register(name.trim(), {
-      onError: () => toast.error("Failed to create profile. Please try again."),
-    });
+    if (!token.trim()) {
+      toast.error("An invite code is required to join.");
+      return;
+    }
+    register(
+      { name: name.trim(), token: token.trim() },
+      {
+        onError: () =>
+          toast.error("Failed to create profile. Please try again."),
+      },
+    );
   };
 
   return (
@@ -53,6 +64,20 @@ export default function RegisterPage() {
               placeholder="e.g. Dr. Sarah Chen"
               autoFocus
               maxLength={64}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="inviteCode" className="text-sm font-medium">
+              Invite code
+            </Label>
+            <Input
+              id="inviteCode"
+              data-ocid="register.token_input"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              placeholder="Paste your invite code here"
+              maxLength={128}
             />
           </div>
 

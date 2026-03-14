@@ -11,6 +11,20 @@ import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
 export interface Assignee { 'principal' : Principal, 'name' : string }
+export interface Bucket {
+  'id' : bigint,
+  'name' : string,
+  'createdAt' : Time,
+  'color' : string,
+}
+export interface Invite {
+  'status' : InviteStatus,
+  'token' : string,
+  'createdAt' : Time,
+}
+export type InviteStatus = { 'active' : null } |
+  { 'revoked' : null } |
+  { 'used' : null };
 export interface Message {
   'id' : bigint,
   'content' : string,
@@ -31,6 +45,7 @@ export interface Task {
   'title' : string,
   'creator' : Principal,
   'completed' : boolean,
+  'bucketId' : [] | [bigint],
   'description' : string,
   'timestamp' : Time,
 }
@@ -43,17 +58,26 @@ export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'addMessage' : ActorMethod<[string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
-  'createTask' : ActorMethod<[string, string, Assignee], undefined>,
+  'createBucket' : ActorMethod<[string, string], undefined>,
+  'createInvite' : ActorMethod<[], string>,
+  'createTask' : ActorMethod<
+    [string, string, Assignee, [] | [bigint]],
+    undefined
+  >,
+  'deleteBucket' : ActorMethod<[bigint], undefined>,
   'deleteTask' : ActorMethod<[bigint], undefined>,
+  'getBuckets' : ActorMethod<[], Array<Bucket>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getDirectMessagesWith' : ActorMethod<[Principal], Array<PrivateMessage>>,
+  'getInvites' : ActorMethod<[], Array<Invite>>,
   'getMessages' : ActorMethod<[], Array<Message>>,
   'getTasks' : ActorMethod<[], Array<Task>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'getUserProfiles' : ActorMethod<[], Array<UserProfile>>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
-  'register' : ActorMethod<[string], undefined>,
+  'register' : ActorMethod<[string, string], undefined>,
+  'revokeInvite' : ActorMethod<[string], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'sendPrivateMessage' : ActorMethod<[Principal, string], undefined>,
   'updateLastSeen' : ActorMethod<[], undefined>,

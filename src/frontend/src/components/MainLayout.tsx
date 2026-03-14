@@ -2,10 +2,18 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Principal } from "@icp-sdk/core/principal";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckSquare, LogOut, MessageSquare, Users } from "lucide-react";
+import {
+  CheckSquare,
+  LogOut,
+  MessageSquare,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 import type { UserProfile } from "../backend.d";
 import { useAppContext } from "../context/AppContext";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { useIsCallerAdmin } from "../hooks/useQueries";
+import AdminPage from "../pages/AdminPage";
 import ChatView from "../pages/ChatView";
 import DirectoryView from "../pages/DirectoryView";
 import PrivateThreadView from "../pages/PrivateThreadView";
@@ -19,6 +27,7 @@ export default function MainLayout({ userProfile }: Props) {
   const { clear } = useInternetIdentity();
   const qc = useQueryClient();
   const { activeView, setActiveView } = useAppContext();
+  const { data: isAdmin } = useIsCallerAdmin();
 
   const handleLogout = async () => {
     await clear();
@@ -103,6 +112,23 @@ export default function MainLayout({ userProfile }: Props) {
               {label}
             </button>
           ))}
+
+          {isAdmin && (
+            <button
+              type="button"
+              data-ocid="nav.admin.link"
+              onClick={() => setActiveView({ type: "admin" })}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left",
+                isNavActive("admin")
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+              )}
+            >
+              <ShieldCheck className="w-4 h-4 flex-shrink-0" />
+              Admin
+            </button>
+          )}
         </nav>
 
         {/* User */}
@@ -139,6 +165,7 @@ export default function MainLayout({ userProfile }: Props) {
           <TasksView currentUserName={displayName} />
         )}
         {activeView.type === "directory" && <DirectoryView />}
+        {activeView.type === "admin" && <AdminPage />}
         {activeView.type === "private" && (
           <PrivateThreadView
             partnerPrincipal={Principal.fromText(activeView.partnerPrincipal)}

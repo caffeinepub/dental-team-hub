@@ -2,6 +2,8 @@ import type { Principal } from "@icp-sdk/core/principal";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   Assignee,
+  Bucket,
+  Invite,
   Message,
   PrivateMessage,
   Task,
@@ -47,6 +49,19 @@ export function useGetTasks() {
     queryFn: async () => {
       if (!actor) return [];
       return actor.getTasks();
+    },
+    enabled: !!actor && !isFetching,
+    refetchInterval: 10000,
+  });
+}
+
+export function useGetBuckets() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Bucket[]>({
+    queryKey: ["buckets"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getBuckets();
     },
     enabled: !!actor && !isFetching,
     refetchInterval: 10000,
@@ -118,11 +133,44 @@ export function useCreateTask() {
       title,
       description,
       assignee,
-    }: { title: string; description: string; assignee: Assignee }) => {
+      bucketId = null,
+    }: {
+      title: string;
+      description: string;
+      assignee: Assignee;
+      bucketId?: bigint | null;
+    }) => {
       if (!actor) throw new Error("Actor not available");
-      await actor.createTask(title, description, assignee);
+      await actor.createTask(title, description, assignee, bucketId ?? null);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["tasks"] }),
+  });
+}
+
+export function useCreateBucket() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ name, color }: { name: string; color: string }) => {
+      if (!actor) throw new Error("Actor not available");
+      await actor.createBucket(name, color);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["buckets"] }),
+  });
+}
+
+export function useDeleteBucket() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("Actor not available");
+      await actor.deleteBucket(id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["buckets"] });
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+    },
   });
 }
 
@@ -157,10 +205,59 @@ export function useRegister() {
   const { actor } = useActor();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (name: string) => {
+    mutationFn: async ({ name, token }: { name: string; token: string }) => {
       if (!actor) throw new Error("Actor not available");
-      await actor.register(name);
+      await actor.register(name, token);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["currentUserProfile"] }),
+  });
+}
+
+export function useGetInvites() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Invite[]>({
+    queryKey: ["invites"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getInvites();
+    },
+    enabled: !!actor && !isFetching,
+    refetchInterval: 10000,
+  });
+}
+
+export function useCreateInvite() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<string> => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.createInvite();
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["invites"] }),
+  });
+}
+
+export function useRevokeInvite() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (token: string) => {
+      if (!actor) throw new Error("Actor not available");
+      await actor.revokeInvite(token);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["invites"] }),
+  });
+}
+
+export function useIsCallerAdmin() {
+  const { actor, isFetching } = useActor();
+  return useQuery<boolean>({
+    queryKey: ["isAdmin"],
+    queryFn: async () => {
+      if (!actor) return false;
+      return actor.isCallerAdmin();
+    },
+    enabled: !!actor && !isFetching,
   });
 }

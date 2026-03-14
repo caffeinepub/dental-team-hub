@@ -13,19 +13,33 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { Principal } from "@icp-sdk/core/principal";
-import { ClipboardList, Loader2, Plus, Trash2 } from "lucide-react";
+import { Check, ClipboardList, Loader2, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Assignee } from "../backend.d";
 import { useAppContext } from "../context/AppContext";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
+  useCreateBucket,
   useCreateTask,
+  useDeleteBucket,
   useDeleteTask,
+  useGetBuckets,
   useGetTasks,
   useGetUserProfiles,
   useUpdateTask,
 } from "../hooks/useQueries";
+
+const PRESET_COLORS = [
+  { label: "Red", value: "#ef4444" },
+  { label: "Orange", value: "#f97316" },
+  { label: "Amber", value: "#f59e0b" },
+  { label: "Green", value: "#22c55e" },
+  { label: "Teal", value: "#14b8a6" },
+  { label: "Blue", value: "#3b82f6" },
+  { label: "Purple", value: "#a855f7" },
+  { label: "Pink", value: "#ec4899" },
+];
 
 interface Props {
   currentUserName: string;
@@ -41,25 +55,48 @@ export default function TasksView({ currentUserName }: Props) {
     isLoading: tasksLoading,
     isError: tasksError,
   } = useGetTasks();
+  const { data: buckets = [] } = useGetBuckets();
   const { data: profiles } = useGetUserProfiles();
   const { mutate: createTask, isPending: creating } = useCreateTask();
   const { mutate: updateTask, isPending: updating } = useUpdateTask();
   const { mutate: deleteTask, isPending: deleting } = useDeleteTask();
+  const { mutate: createBucket, isPending: creatingBucket } = useCreateBucket();
+  const { mutate: deleteBucket } = useDeleteBucket();
+
+  // Selected bucket state: "all" | "none" (general) | bucket id string
+  const [activeBucketId, setActiveBucketId] = useState<string>("all");
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [assigneeName, setAssigneeName] = useState("");
+  const [selectedBucketId, setSelectedBucketId] = useState<string>("none");
   const [deletingId, setDeletingId] = useState<bigint | null>(null);
 
+  // Bucket form state
+  const [showBucketForm, setShowBucketForm] = useState(false);
+  const [bucketName, setBucketName] = useState("");
+  const [bucketColor, setBucketColor] = useState(PRESET_COLORS[0].value);
+
+  // Hover state for bucket rows
+  const [hoveredBucketId, setHoveredBucketId] = useState<string | null>(null);
+
   const allNames = profiles?.map((p) => p.name) ?? [];
-  // Include current user if not in list
   const assigneeOptions = Array.from(new Set([currentUserName, ...allNames]));
+
+  // When activeBucketId changes, sync selectedBucketId for task form
+  const handleSelectBucket = (id: string) => {
+    setActiveBucketId(id);
+    if (id !== "all") {
+      setSelectedBucketId(id);
+    } else {
+      setSelectedBucketId("none");
+    }
+  };
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !assigneeName) return;
 
-    // Try to resolve principal from known principals or fall back to own principal
     const resolvedPrincipalStr = principalByName.get(assigneeName);
     const assigneePrincipal: Principal = resolvedPrincipalStr
       ? Principal.fromText(resolvedPrincipalStr)
@@ -70,8 +107,16 @@ export default function TasksView({ currentUserName }: Props) {
       name: assigneeName,
     };
 
+    const bucketId =
+      selectedBucketId !== "none" ? BigInt(selectedBucketId) : null;
+
     createTask(
-      { title: title.trim(), description: description.trim(), assignee },
+      {
+        title: title.trim(),
+        description: description.trim(),
+        assignee,
+        bucketId,
+      },
       {
         onSuccess: () => {
           setTitle("");
@@ -87,9 +132,7 @@ export default function TasksView({ currentUserName }: Props) {
   const handleToggle = (id: bigint, completed: boolean) => {
     updateTask(
       { id, completed: !completed },
-      {
-        onError: () => toast.error("Failed to update task"),
-      },
+      { onError: () => toast.error("Failed to update task") },
     );
   };
 
@@ -107,165 +150,530 @@ export default function TasksView({ currentUserName }: Props) {
     });
   };
 
-  const sortedTasks = tasks
-    ? [...tasks].sort((a, b) => {
-        if (a.completed === b.completed)
-          return Number(b.timestamp - a.timestamp);
-        return a.completed ? 1 : -1;
-      })
-    : [];
+  const handleAddBucket = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bucketName.trim()) return;
+    createBucket(
+      { name: bucketName.trim(), color: bucketColor },
+      {
+        onSuccess: () => {
+          setBucketName("");
+          setShowBucketForm(false);
+          toast.success("Bucket created");
+        },
+        onError: () => toast.error("Failed to create bucket"),
+      },
+    );
+  };
+
+  const handleDeleteBucket = (id: bigint, e: React.MouseEvent) => {
+    e.stopPropagation();
+    deleteBucket(id, {
+      onSuccess: () => {
+        if (activeBucketId === id.toString()) {
+          setActiveBucketId("all");
+          setSelectedBucketId("none");
+        }
+        toast.success("Bucket deleted");
+      },
+      onError: () => toast.error("Failed to delete bucket"),
+    });
+  };
+
+  const allTasks = tasks ?? [];
+
+  const sortTasks = (taskList: typeof allTasks) =>
+    [...taskList].sort((a, b) => {
+      if (a.completed === b.completed) return Number(b.timestamp - a.timestamp);
+      return a.completed ? 1 : -1;
+    });
+
+  // Get tasks for currently selected bucket
+  const visibleTasks = sortTasks(
+    activeBucketId === "all"
+      ? allTasks
+      : activeBucketId === "none"
+        ? allTasks.filter((t) => !t.bucketId)
+        : allTasks.filter((t) => t.bucketId?.toString() === activeBucketId),
+  );
+
+  // Task counts per bucket for sidebar badges
+  const taskCountFor = (id: string) => {
+    if (id === "all") return allTasks.length;
+    if (id === "none") return allTasks.filter((t) => !t.bucketId).length;
+    return allTasks.filter((t) => t.bucketId?.toString() === id).length;
+  };
+
+  // Active bucket meta for display
+  const activeBucketMeta =
+    activeBucketId === "all"
+      ? { label: "All Tasks", color: "#94a3b8" }
+      : activeBucketId === "none"
+        ? { label: "General", color: "#94a3b8" }
+        : (() => {
+            const b = buckets.find((b) => b.id.toString() === activeBucketId);
+            return b
+              ? { label: b.name, color: b.color }
+              : { label: "All Tasks", color: "#94a3b8" };
+          })();
+
+  let globalIdx = 0;
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      {/* Header */}
-      <div className="flex-shrink-0 px-6 py-4 border-b border-border bg-card">
-        <h2 className="text-lg font-semibold text-foreground">Tasks</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Shared team task list
-        </p>
-      </div>
-
-      <div className="flex-1 overflow-auto p-6 space-y-6">
-        {/* New task form */}
-        <div className="bg-card border border-border rounded-xl p-5 shadow-xs">
-          <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-            <Plus className="w-4 h-4" /> New Task
-          </h3>
-          <form onSubmit={handleCreate} className="space-y-3">
-            <Input
-              data-ocid="todo.input"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Task title"
-              required
-            />
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Description (optional)"
-              className="resize-none"
-              rows={2}
-            />
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <Label className="text-xs text-muted-foreground mb-1.5 block">
-                  Assign to
-                </Label>
-                <Select value={assigneeName} onValueChange={setAssigneeName}>
-                  <SelectTrigger data-ocid="todo.select">
-                    <SelectValue placeholder="Select team member" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {assigneeOptions.map((name) => (
-                      <SelectItem key={name} value={name}>
-                        {name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-end">
-                <Button
-                  type="submit"
-                  data-ocid="todo.add_button"
-                  disabled={creating || !title.trim() || !assigneeName}
-                >
-                  {creating ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    "Add Task"
-                  )}
-                </Button>
-              </div>
-            </div>
-          </form>
+    <div className="flex h-full overflow-hidden">
+      {/* ── Left Bucket Panel ── */}
+      <aside className="w-60 flex-shrink-0 border-r border-border bg-card flex flex-col">
+        {/* Panel header */}
+        <div className="px-4 pt-5 pb-3 flex-shrink-0">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Buckets
+          </h2>
         </div>
 
-        {/* Task list */}
-        {tasksLoading && (
-          <div className="space-y-3" data-ocid="todo.loading_state">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-16 w-full rounded-xl" />
-            ))}
-          </div>
-        )}
-
-        {tasksError && (
-          <div
-            className="text-center py-12 text-sm text-destructive"
-            data-ocid="todo.error_state"
+        {/* Bucket list */}
+        <nav
+          data-ocid="bucket.list"
+          className="flex-1 overflow-y-auto px-2 space-y-0.5"
+        >
+          {/* All Tasks entry */}
+          <button
+            type="button"
+            data-ocid="todo.all_tab"
+            onClick={() => handleSelectBucket("all")}
+            className={cn(
+              "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors group",
+              activeBucketId === "all"
+                ? "bg-primary/10 text-primary"
+                : "text-foreground hover:bg-muted",
+            )}
           >
-            Failed to load tasks.
-          </div>
-        )}
+            <span
+              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+              style={{ backgroundColor: "#94a3b8" }}
+            />
+            <span className="flex-1 text-left truncate">All Tasks</span>
+            <span
+              className={cn(
+                "text-xs px-1.5 py-0.5 rounded-full font-medium",
+                activeBucketId === "all"
+                  ? "bg-primary/20 text-primary"
+                  : "bg-muted text-muted-foreground",
+              )}
+            >
+              {taskCountFor("all")}
+            </span>
+          </button>
 
-        {!tasksLoading && !tasksError && sortedTasks.length === 0 && (
-          <div className="text-center py-16" data-ocid="todo.empty_state">
-            <ClipboardList className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="font-medium text-foreground">No tasks yet</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Create your first task above.
-            </p>
-          </div>
-        )}
-
-        {!tasksLoading && sortedTasks.length > 0 && (
-          <div className="space-y-2">
-            {sortedTasks.map((task, idx) => (
-              <div
-                key={task.id.toString()}
-                data-ocid={`todo.item.${idx + 1}`}
+          {/* Named buckets */}
+          {buckets.map((bucket, i) => (
+            <div
+              key={bucket.id.toString()}
+              data-ocid={`bucket.item.${i + 1}`}
+              className="relative group"
+              onMouseEnter={() => setHoveredBucketId(bucket.id.toString())}
+              onMouseLeave={() => setHoveredBucketId(null)}
+            >
+              <button
+                type="button"
+                onClick={() => handleSelectBucket(bucket.id.toString())}
                 className={cn(
-                  "flex items-start gap-3 bg-card border border-border rounded-xl px-4 py-3.5 shadow-xs transition-opacity",
-                  task.completed && "opacity-60",
+                  "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                  activeBucketId === bucket.id.toString()
+                    ? "bg-primary/10 text-primary"
+                    : "text-foreground hover:bg-muted",
                 )}
               >
-                <Checkbox
-                  data-ocid={`todo.checkbox.${idx + 1}`}
-                  id={`task-${task.id}`}
-                  checked={task.completed}
-                  onCheckedChange={() => handleToggle(task.id, task.completed)}
-                  disabled={updating}
-                  className="mt-0.5 flex-shrink-0"
+                <span
+                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: bucket.color }}
                 />
-                <div className="flex-1 min-w-0">
-                  <label
-                    htmlFor={`task-${task.id}`}
+                <span className="flex-1 text-left truncate">{bucket.name}</span>
+                {hoveredBucketId !== bucket.id.toString() && (
+                  <span
                     className={cn(
-                      "text-sm font-medium cursor-pointer leading-snug block",
-                      task.completed && "line-through text-muted-foreground",
+                      "text-xs px-1.5 py-0.5 rounded-full font-medium",
+                      activeBucketId === bucket.id.toString()
+                        ? "bg-primary/20 text-primary"
+                        : "bg-muted text-muted-foreground",
                     )}
                   >
-                    {task.title}
-                  </label>
-                  {task.description && (
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                      {task.description}
-                    </p>
-                  )}
-                  <p className="text-xs text-muted-foreground/70 mt-1">
-                    → {task.assignee.name}
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  data-ocid={`todo.delete_button.${idx + 1}`}
-                  onClick={() => handleDelete(task.id)}
-                  disabled={deleting && deletingId === task.id}
-                  className="h-7 w-7 text-muted-foreground hover:text-destructive flex-shrink-0"
+                    {taskCountFor(bucket.id.toString())}
+                  </span>
+                )}
+              </button>
+              {/* Delete button on hover */}
+              {hoveredBucketId === bucket.id.toString() && (
+                <button
+                  type="button"
+                  onClick={(e) => handleDeleteBucket(bucket.id, e)}
+                  data-ocid={`bucket.delete_button.${i + 1}`}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                  aria-label={`Delete ${bucket.name}`}
                 >
-                  {deleting && deletingId === task.id ? (
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          ))}
+
+          {/* General bucket */}
+          <div
+            className="relative group"
+            onMouseEnter={() => setHoveredBucketId("none")}
+            onMouseLeave={() => setHoveredBucketId(null)}
+          >
+            <button
+              type="button"
+              onClick={() => handleSelectBucket("none")}
+              className={cn(
+                "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                activeBucketId === "none"
+                  ? "bg-primary/10 text-primary"
+                  : "text-foreground hover:bg-muted",
+              )}
+            >
+              <span
+                className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-border"
+                style={{ backgroundColor: "#94a3b8" }}
+              />
+              <span className="flex-1 text-left truncate">General</span>
+              <span
+                className={cn(
+                  "text-xs px-1.5 py-0.5 rounded-full font-medium",
+                  activeBucketId === "none"
+                    ? "bg-primary/20 text-primary"
+                    : "bg-muted text-muted-foreground",
+                )}
+              >
+                {taskCountFor("none")}
+              </span>
+            </button>
+          </div>
+        </nav>
+
+        {/* New bucket form / button */}
+        <div className="flex-shrink-0 p-3 border-t border-border">
+          {showBucketForm ? (
+            <form onSubmit={handleAddBucket} className="space-y-2">
+              <Input
+                data-ocid="bucket.input"
+                value={bucketName}
+                onChange={(e) => setBucketName(e.target.value)}
+                placeholder="Bucket name"
+                className="h-8 text-sm"
+                autoFocus
+              />
+              {/* Color picker */}
+              <div className="flex gap-1 flex-wrap">
+                {PRESET_COLORS.map((c) => (
+                  <button
+                    key={c.value}
+                    type="button"
+                    onClick={() => setBucketColor(c.value)}
+                    title={c.label}
+                    className={cn(
+                      "w-5 h-5 rounded-full border-2 transition-all hover:scale-110",
+                      bucketColor === c.value
+                        ? "border-foreground scale-110"
+                        : "border-transparent",
+                    )}
+                    style={{ backgroundColor: c.value }}
+                  />
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="submit"
+                  size="sm"
+                  data-ocid="bucket.primary_button"
+                  disabled={creatingBucket || !bucketName.trim()}
+                  className="flex-1 h-8"
+                >
+                  {creatingBucket ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : (
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <>
+                      <Check className="w-3.5 h-3.5 mr-1" />
+                      Create
+                    </>
                   )}
                 </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2"
+                  onClick={() => {
+                    setShowBucketForm(false);
+                    setBucketName("");
+                  }}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </Button>
               </div>
-            ))}
+            </form>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              data-ocid="bucket.add_button"
+              onClick={() => setShowBucketForm(true)}
+              className="w-full h-8 text-muted-foreground hover:text-foreground justify-start gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              New Bucket
+            </Button>
+          )}
+        </div>
+      </aside>
+
+      {/* ── Right Tasks Panel ── */}
+      <main className="flex-1 flex flex-col overflow-hidden">
+        {/* Right panel header */}
+        <div className="flex-shrink-0 px-6 py-4 border-b border-border bg-card">
+          <div className="flex items-center gap-2">
+            <span
+              className="w-3 h-3 rounded-full flex-shrink-0"
+              style={{ backgroundColor: activeBucketMeta.color }}
+            />
+            <h2 className="text-lg font-semibold text-foreground">
+              {activeBucketMeta.label}
+            </h2>
+            <span className="text-sm text-muted-foreground">
+              ({visibleTasks.length})
+            </span>
           </div>
-        )}
-      </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+          {/* Task creation form */}
+          <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
+            <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Plus className="w-4 h-4" /> New Task
+            </h3>
+            <form onSubmit={handleCreate} className="space-y-3">
+              <Input
+                data-ocid="todo.input"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Task title"
+                required
+              />
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Description (optional)"
+                className="resize-none"
+                rows={2}
+              />
+              <div className="flex gap-3 flex-wrap">
+                <div className="flex-1 min-w-32">
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">
+                    Assign to
+                  </Label>
+                  <Select value={assigneeName} onValueChange={setAssigneeName}>
+                    <SelectTrigger data-ocid="todo.select">
+                      <SelectValue placeholder="Select team member" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {assigneeOptions.map((name) => (
+                        <SelectItem key={name} value={name}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex-1 min-w-32">
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">
+                    Bucket
+                  </Label>
+                  {/* Show locked badge when a specific bucket is active, still allow override */}
+                  <Select
+                    value={selectedBucketId}
+                    onValueChange={setSelectedBucketId}
+                  >
+                    <SelectTrigger data-ocid="bucket.select">
+                      <SelectValue placeholder="No bucket">
+                        {selectedBucketId !== "none" ? (
+                          <span className="flex items-center gap-2">
+                            <span
+                              className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+                              style={{
+                                backgroundColor:
+                                  buckets.find(
+                                    (b) => b.id.toString() === selectedBucketId,
+                                  )?.color ?? "#94a3b8",
+                              }}
+                            />
+                            {buckets.find(
+                              (b) => b.id.toString() === selectedBucketId,
+                            )?.name ?? "No bucket"}
+                          </span>
+                        ) : (
+                          "No bucket"
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No bucket (General)</SelectItem>
+                      {buckets.map((b) => (
+                        <SelectItem
+                          key={b.id.toString()}
+                          value={b.id.toString()}
+                        >
+                          <span className="flex items-center gap-2">
+                            <span
+                              className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: b.color }}
+                            />
+                            {b.name}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-end">
+                  <Button
+                    type="submit"
+                    data-ocid="todo.add_button"
+                    disabled={creating || !title.trim() || !assigneeName}
+                  >
+                    {creating ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      "Add Task"
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          {/* Task list */}
+          {tasksLoading && (
+            <div className="space-y-3" data-ocid="todo.loading_state">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-16 w-full rounded-xl" />
+              ))}
+            </div>
+          )}
+
+          {tasksError && (
+            <div
+              className="text-center py-12 text-sm text-destructive"
+              data-ocid="todo.error_state"
+            >
+              Failed to load tasks.
+            </div>
+          )}
+
+          {!tasksLoading && !tasksError && visibleTasks.length === 0 && (
+            <div className="text-center py-16" data-ocid="todo.empty_state">
+              <ClipboardList className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+              <p className="font-medium text-foreground">
+                No tasks in{" "}
+                <span style={{ color: activeBucketMeta.color }}>
+                  {activeBucketMeta.label}
+                </span>
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Create your first task above.
+              </p>
+            </div>
+          )}
+
+          {!tasksLoading && !tasksError && visibleTasks.length > 0 && (
+            <div className="space-y-2">
+              {visibleTasks.map((task) => {
+                globalIdx += 1;
+                const idx = globalIdx;
+                const bucketColor = task.bucketId
+                  ? (buckets.find(
+                      (b) => b.id.toString() === task.bucketId?.toString(),
+                    )?.color ?? "#94a3b8")
+                  : "#94a3b8";
+
+                return (
+                  <div
+                    key={task.id.toString()}
+                    data-ocid={`todo.item.${idx}`}
+                    className={cn(
+                      "flex items-start gap-3 bg-card border border-border rounded-xl px-4 py-3.5 shadow-sm transition-opacity border-l-4",
+                      task.completed && "opacity-60",
+                    )}
+                    style={{ borderLeftColor: bucketColor }}
+                  >
+                    <Checkbox
+                      data-ocid={`todo.checkbox.${idx}`}
+                      id={`task-${task.id}`}
+                      checked={task.completed}
+                      onCheckedChange={() =>
+                        handleToggle(task.id, task.completed)
+                      }
+                      disabled={updating}
+                      className="mt-0.5 flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <label
+                        htmlFor={`task-${task.id}`}
+                        className={cn(
+                          "text-sm font-medium cursor-pointer leading-snug block",
+                          task.completed &&
+                            "line-through text-muted-foreground",
+                        )}
+                      >
+                        {task.title}
+                      </label>
+                      {task.description && (
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                          {task.description}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-xs text-muted-foreground/70">
+                          → {task.assignee.name}
+                        </p>
+                        {activeBucketId === "all" && task.bucketId && (
+                          <span
+                            className="text-xs px-1.5 py-0.5 rounded-full text-white font-medium"
+                            style={{ backgroundColor: bucketColor }}
+                          >
+                            {
+                              buckets.find(
+                                (b) =>
+                                  b.id.toString() === task.bucketId?.toString(),
+                              )?.name
+                            }
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      data-ocid={`todo.delete_button.${idx}`}
+                      onClick={() => handleDelete(task.id)}
+                      disabled={deleting && deletingId === task.id}
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive flex-shrink-0"
+                    >
+                      {deleting && deletingId === task.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-3.5 h-3.5" />
+                      )}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 }

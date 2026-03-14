@@ -16,6 +16,7 @@ export type AppView =
   | { type: "chat" }
   | { type: "tasks" }
   | { type: "directory" }
+  | { type: "admin" }
   | { type: "private"; partnerPrincipal: string; partnerName: string };
 
 const AppContext = createContext<AppContextValue | null>(null);

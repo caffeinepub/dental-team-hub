@@ -18,6 +18,12 @@ export const Assignee = IDL.Record({
   'name' : IDL.Text,
 });
 export const Time = IDL.Int;
+export const Bucket = IDL.Record({
+  'id' : IDL.Nat,
+  'name' : IDL.Text,
+  'createdAt' : Time,
+  'color' : IDL.Text,
+});
 export const UserProfile = IDL.Record({ 'name' : IDL.Text, 'lastSeen' : Time });
 export const PrivateMessage = IDL.Record({
   'id' : IDL.Nat,
@@ -25,6 +31,16 @@ export const PrivateMessage = IDL.Record({
   'recipient' : IDL.Principal,
   'sender' : IDL.Principal,
   'timestamp' : Time,
+});
+export const InviteStatus = IDL.Variant({
+  'active' : IDL.Null,
+  'revoked' : IDL.Null,
+  'used' : IDL.Null,
+});
+export const Invite = IDL.Record({
+  'status' : InviteStatus,
+  'token' : IDL.Text,
+  'createdAt' : Time,
 });
 export const Message = IDL.Record({
   'id' : IDL.Nat,
@@ -39,6 +55,7 @@ export const Task = IDL.Record({
   'title' : IDL.Text,
   'creator' : IDL.Principal,
   'completed' : IDL.Bool,
+  'bucketId' : IDL.Opt(IDL.Nat),
   'description' : IDL.Text,
   'timestamp' : Time,
 });
@@ -47,8 +64,16 @@ export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'addMessage' : IDL.Func([IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-  'createTask' : IDL.Func([IDL.Text, IDL.Text, Assignee], [], []),
+  'createBucket' : IDL.Func([IDL.Text, IDL.Text], [], []),
+  'createInvite' : IDL.Func([], [IDL.Text], []),
+  'createTask' : IDL.Func(
+      [IDL.Text, IDL.Text, Assignee, IDL.Opt(IDL.Nat)],
+      [],
+      [],
+    ),
+  'deleteBucket' : IDL.Func([IDL.Nat], [], []),
   'deleteTask' : IDL.Func([IDL.Nat], [], []),
+  'getBuckets' : IDL.Func([], [IDL.Vec(Bucket)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getDirectMessagesWith' : IDL.Func(
@@ -56,6 +81,7 @@ export const idlService = IDL.Service({
       [IDL.Vec(PrivateMessage)],
       ['query'],
     ),
+  'getInvites' : IDL.Func([], [IDL.Vec(Invite)], ['query']),
   'getMessages' : IDL.Func([], [IDL.Vec(Message)], ['query']),
   'getTasks' : IDL.Func([], [IDL.Vec(Task)], ['query']),
   'getUserProfile' : IDL.Func(
@@ -65,7 +91,8 @@ export const idlService = IDL.Service({
     ),
   'getUserProfiles' : IDL.Func([], [IDL.Vec(UserProfile)], ['query']),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-  'register' : IDL.Func([IDL.Text], [], []),
+  'register' : IDL.Func([IDL.Text, IDL.Text], [], []),
+  'revokeInvite' : IDL.Func([IDL.Text], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'sendPrivateMessage' : IDL.Func([IDL.Principal, IDL.Text], [], []),
   'updateLastSeen' : IDL.Func([], [], []),
@@ -85,6 +112,12 @@ export const idlFactory = ({ IDL }) => {
     'name' : IDL.Text,
   });
   const Time = IDL.Int;
+  const Bucket = IDL.Record({
+    'id' : IDL.Nat,
+    'name' : IDL.Text,
+    'createdAt' : Time,
+    'color' : IDL.Text,
+  });
   const UserProfile = IDL.Record({ 'name' : IDL.Text, 'lastSeen' : Time });
   const PrivateMessage = IDL.Record({
     'id' : IDL.Nat,
@@ -92,6 +125,16 @@ export const idlFactory = ({ IDL }) => {
     'recipient' : IDL.Principal,
     'sender' : IDL.Principal,
     'timestamp' : Time,
+  });
+  const InviteStatus = IDL.Variant({
+    'active' : IDL.Null,
+    'revoked' : IDL.Null,
+    'used' : IDL.Null,
+  });
+  const Invite = IDL.Record({
+    'status' : InviteStatus,
+    'token' : IDL.Text,
+    'createdAt' : Time,
   });
   const Message = IDL.Record({
     'id' : IDL.Nat,
@@ -106,6 +149,7 @@ export const idlFactory = ({ IDL }) => {
     'title' : IDL.Text,
     'creator' : IDL.Principal,
     'completed' : IDL.Bool,
+    'bucketId' : IDL.Opt(IDL.Nat),
     'description' : IDL.Text,
     'timestamp' : Time,
   });
@@ -114,8 +158,16 @@ export const idlFactory = ({ IDL }) => {
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'addMessage' : IDL.Func([IDL.Text], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-    'createTask' : IDL.Func([IDL.Text, IDL.Text, Assignee], [], []),
+    'createBucket' : IDL.Func([IDL.Text, IDL.Text], [], []),
+    'createInvite' : IDL.Func([], [IDL.Text], []),
+    'createTask' : IDL.Func(
+        [IDL.Text, IDL.Text, Assignee, IDL.Opt(IDL.Nat)],
+        [],
+        [],
+      ),
+    'deleteBucket' : IDL.Func([IDL.Nat], [], []),
     'deleteTask' : IDL.Func([IDL.Nat], [], []),
+    'getBuckets' : IDL.Func([], [IDL.Vec(Bucket)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getDirectMessagesWith' : IDL.Func(
@@ -123,6 +175,7 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(PrivateMessage)],
         ['query'],
       ),
+    'getInvites' : IDL.Func([], [IDL.Vec(Invite)], ['query']),
     'getMessages' : IDL.Func([], [IDL.Vec(Message)], ['query']),
     'getTasks' : IDL.Func([], [IDL.Vec(Task)], ['query']),
     'getUserProfile' : IDL.Func(
@@ -132,7 +185,8 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getUserProfiles' : IDL.Func([], [IDL.Vec(UserProfile)], ['query']),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-    'register' : IDL.Func([IDL.Text], [], []),
+    'register' : IDL.Func([IDL.Text, IDL.Text], [], []),
+    'revokeInvite' : IDL.Func([IDL.Text], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'sendPrivateMessage' : IDL.Func([IDL.Principal, IDL.Text], [], []),
     'updateLastSeen' : IDL.Func([], [], []),
