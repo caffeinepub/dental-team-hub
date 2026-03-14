@@ -1,0 +1,153 @@
+@font-face {
+  font-family: "DM Serif Display";
+  src: url("/assets/fonts/DMSerifDisplay-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/assets/fonts/PlusJakartaSans-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/assets/fonts/PlusJakartaSans-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/assets/fonts/PlusJakartaSans-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/assets/fonts/PlusJakartaSans-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Teal-clinical light palette */
+    --background: 0.975 0.004 200;
+    --foreground: 0.2 0.025 240;
+
+    --card: 1 0 0;
+    --card-foreground: 0.2 0.025 240;
+
+    --popover: 1 0 0;
+    --popover-foreground: 0.2 0.025 240;
+
+    --primary: 0.52 0.13 195;
+    --primary-foreground: 0.98 0 0;
+
+    --secondary: 0.94 0.025 195;
+    --secondary-foreground: 0.32 0.08 195;
+
+    --muted: 0.95 0.008 205;
+    --muted-foreground: 0.52 0.025 220;
+
+    --accent: 0.91 0.04 195;
+    --accent-foreground: 0.28 0.09 195;
+
+    --destructive: 0.54 0.21 25;
+    --destructive-foreground: 0.98 0 0;
+
+    --border: 0.9 0.01 200;
+    --input: 0.92 0.012 200;
+    --ring: 0.52 0.13 195;
+
+    --radius: 0.5rem;
+
+    /* Sidebar: deep teal */
+    --sidebar: 0.27 0.07 195;
+    --sidebar-foreground: 0.95 0.012 200;
+    --sidebar-primary: 0.52 0.13 195;
+    --sidebar-primary-foreground: 0.98 0 0;
+    --sidebar-accent: 0.34 0.07 195;
+    --sidebar-accent-foreground: 0.95 0.012 200;
+    --sidebar-border: 0.33 0.065 195;
+    --sidebar-ring: 0.52 0.13 195;
+
+    --chart-1: 0.52 0.13 195;
+    --chart-2: 0.6 0.1 165;
+    --chart-3: 0.7 0.08 220;
+    --chart-4: 0.55 0.15 55;
+    --chart-5: 0.6 0.14 25;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Sidebar geometric pattern overlay */
+.sidebar-pattern {
+  background-image: radial-gradient(
+      circle at 20% 20%,
+      oklch(0.35 0.08 195 / 0.4) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 80% 80%,
+      oklch(0.22 0.06 195 / 0.5) 0%,
+      transparent 50%
+    );
+}
+
+/* Chat bubble animations */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.msg-self {
+  animation: slideInRight 0.2s ease-out;
+}
+.msg-other {
+  animation: slideInLeft 0.2s ease-out;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(var(--border));
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(var(--muted-foreground) / 0.5);
+}
