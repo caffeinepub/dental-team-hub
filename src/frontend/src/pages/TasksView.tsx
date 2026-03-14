@@ -13,33 +13,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { Principal } from "@icp-sdk/core/principal";
-import { Check, ClipboardList, Loader2, Plus, Trash2, X } from "lucide-react";
+import { ClipboardList, Loader2, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Assignee } from "../backend.d";
 import { useAppContext } from "../context/AppContext";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
-  useCreateBucket,
   useCreateTask,
-  useDeleteBucket,
   useDeleteTask,
   useGetBuckets,
   useGetTasks,
   useGetUserProfiles,
   useUpdateTask,
 } from "../hooks/useQueries";
-
-const PRESET_COLORS = [
-  { label: "Red", value: "#ef4444" },
-  { label: "Orange", value: "#f97316" },
-  { label: "Amber", value: "#f59e0b" },
-  { label: "Green", value: "#22c55e" },
-  { label: "Teal", value: "#14b8a6" },
-  { label: "Blue", value: "#3b82f6" },
-  { label: "Purple", value: "#a855f7" },
-  { label: "Pink", value: "#ec4899" },
-];
 
 interface Props {
   currentUserName: string;
@@ -60,8 +47,6 @@ export default function TasksView({ currentUserName }: Props) {
   const { mutate: createTask, isPending: creating } = useCreateTask();
   const { mutate: updateTask, isPending: updating } = useUpdateTask();
   const { mutate: deleteTask, isPending: deleting } = useDeleteTask();
-  const { mutate: createBucket, isPending: creatingBucket } = useCreateBucket();
-  const { mutate: deleteBucket } = useDeleteBucket();
 
   // Selected bucket state: "all" | "none" (general) | bucket id string
   const [activeBucketId, setActiveBucketId] = useState<string>("all");
@@ -71,14 +56,6 @@ export default function TasksView({ currentUserName }: Props) {
   const [assigneeName, setAssigneeName] = useState("");
   const [selectedBucketId, setSelectedBucketId] = useState<string>("none");
   const [deletingId, setDeletingId] = useState<bigint | null>(null);
-
-  // Bucket form state
-  const [showBucketForm, setShowBucketForm] = useState(false);
-  const [bucketName, setBucketName] = useState("");
-  const [bucketColor, setBucketColor] = useState(PRESET_COLORS[0].value);
-
-  // Hover state for bucket rows
-  const [hoveredBucketId, setHoveredBucketId] = useState<string | null>(null);
 
   const allNames = profiles?.map((p) => p.name) ?? [];
   const assigneeOptions = Array.from(new Set([currentUserName, ...allNames]));
@@ -147,36 +124,6 @@ export default function TasksView({ currentUserName }: Props) {
         setDeletingId(null);
         toast.error("Failed to delete task");
       },
-    });
-  };
-
-  const handleAddBucket = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!bucketName.trim()) return;
-    createBucket(
-      { name: bucketName.trim(), color: bucketColor },
-      {
-        onSuccess: () => {
-          setBucketName("");
-          setShowBucketForm(false);
-          toast.success("Bucket created");
-        },
-        onError: () => toast.error("Failed to create bucket"),
-      },
-    );
-  };
-
-  const handleDeleteBucket = (id: bigint, e: React.MouseEvent) => {
-    e.stopPropagation();
-    deleteBucket(id, {
-      onSuccess: () => {
-        if (activeBucketId === id.toString()) {
-          setActiveBucketId("all");
-          setSelectedBucketId("none");
-        }
-        toast.success("Bucket deleted");
-      },
-      onError: () => toast.error("Failed to delete bucket"),
     });
   };
 
@@ -266,166 +213,64 @@ export default function TasksView({ currentUserName }: Props) {
 
           {/* Named buckets */}
           {buckets.map((bucket, i) => (
-            <div
-              key={bucket.id.toString()}
-              data-ocid={`bucket.item.${i + 1}`}
-              className="relative group"
-              onMouseEnter={() => setHoveredBucketId(bucket.id.toString())}
-              onMouseLeave={() => setHoveredBucketId(null)}
-            >
-              <button
-                type="button"
-                onClick={() => handleSelectBucket(bucket.id.toString())}
-                className={cn(
-                  "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                  activeBucketId === bucket.id.toString()
-                    ? "bg-primary/10 text-primary"
-                    : "text-foreground hover:bg-muted",
-                )}
-              >
-                <span
-                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: bucket.color }}
-                />
-                <span className="flex-1 text-left truncate">{bucket.name}</span>
-                {hoveredBucketId !== bucket.id.toString() && (
-                  <span
-                    className={cn(
-                      "text-xs px-1.5 py-0.5 rounded-full font-medium",
-                      activeBucketId === bucket.id.toString()
-                        ? "bg-primary/20 text-primary"
-                        : "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    {taskCountFor(bucket.id.toString())}
-                  </span>
-                )}
-              </button>
-              {/* Delete button on hover */}
-              {hoveredBucketId === bucket.id.toString() && (
-                <button
-                  type="button"
-                  onClick={(e) => handleDeleteBucket(bucket.id, e)}
-                  data-ocid={`bucket.delete_button.${i + 1}`}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                  aria-label={`Delete ${bucket.name}`}
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          ))}
-
-          {/* General bucket */}
-          <div
-            className="relative group"
-            onMouseEnter={() => setHoveredBucketId("none")}
-            onMouseLeave={() => setHoveredBucketId(null)}
-          >
             <button
+              key={bucket.id.toString()}
               type="button"
-              onClick={() => handleSelectBucket("none")}
+              data-ocid={`bucket.item.${i + 1}`}
+              onClick={() => handleSelectBucket(bucket.id.toString())}
               className={cn(
                 "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                activeBucketId === "none"
+                activeBucketId === bucket.id.toString()
                   ? "bg-primary/10 text-primary"
                   : "text-foreground hover:bg-muted",
               )}
             >
               <span
-                className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-border"
-                style={{ backgroundColor: "#94a3b8" }}
+                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: bucket.color }}
               />
-              <span className="flex-1 text-left truncate">General</span>
+              <span className="flex-1 text-left truncate">{bucket.name}</span>
               <span
                 className={cn(
                   "text-xs px-1.5 py-0.5 rounded-full font-medium",
-                  activeBucketId === "none"
+                  activeBucketId === bucket.id.toString()
                     ? "bg-primary/20 text-primary"
                     : "bg-muted text-muted-foreground",
                 )}
               >
-                {taskCountFor("none")}
+                {taskCountFor(bucket.id.toString())}
               </span>
             </button>
-          </div>
-        </nav>
+          ))}
 
-        {/* New bucket form / button */}
-        <div className="flex-shrink-0 p-3 border-t border-border">
-          {showBucketForm ? (
-            <form onSubmit={handleAddBucket} className="space-y-2">
-              <Input
-                data-ocid="bucket.input"
-                value={bucketName}
-                onChange={(e) => setBucketName(e.target.value)}
-                placeholder="Bucket name"
-                className="h-8 text-sm"
-                autoFocus
-              />
-              {/* Color picker */}
-              <div className="flex gap-1 flex-wrap">
-                {PRESET_COLORS.map((c) => (
-                  <button
-                    key={c.value}
-                    type="button"
-                    onClick={() => setBucketColor(c.value)}
-                    title={c.label}
-                    className={cn(
-                      "w-5 h-5 rounded-full border-2 transition-all hover:scale-110",
-                      bucketColor === c.value
-                        ? "border-foreground scale-110"
-                        : "border-transparent",
-                    )}
-                    style={{ backgroundColor: c.value }}
-                  />
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  type="submit"
-                  size="sm"
-                  data-ocid="bucket.primary_button"
-                  disabled={creatingBucket || !bucketName.trim()}
-                  className="flex-1 h-8"
-                >
-                  {creatingBucket ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <>
-                      <Check className="w-3.5 h-3.5 mr-1" />
-                      Create
-                    </>
-                  )}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-2"
-                  onClick={() => {
-                    setShowBucketForm(false);
-                    setBucketName("");
-                  }}
-                >
-                  <X className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            </form>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              data-ocid="bucket.add_button"
-              onClick={() => setShowBucketForm(true)}
-              className="w-full h-8 text-muted-foreground hover:text-foreground justify-start gap-1.5"
+          {/* General bucket */}
+          <button
+            type="button"
+            onClick={() => handleSelectBucket("none")}
+            className={cn(
+              "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+              activeBucketId === "none"
+                ? "bg-primary/10 text-primary"
+                : "text-foreground hover:bg-muted",
+            )}
+          >
+            <span
+              className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-border"
+              style={{ backgroundColor: "#94a3b8" }}
+            />
+            <span className="flex-1 text-left truncate">General</span>
+            <span
+              className={cn(
+                "text-xs px-1.5 py-0.5 rounded-full font-medium",
+                activeBucketId === "none"
+                  ? "bg-primary/20 text-primary"
+                  : "bg-muted text-muted-foreground",
+              )}
             >
-              <Plus className="w-3.5 h-3.5" />
-              New Bucket
-            </Button>
-          )}
-        </div>
+              {taskCountFor("none")}
+            </span>
+          </button>
+        </nav>
       </aside>
 
       {/* ── Right Tasks Panel ── */}
@@ -490,7 +335,6 @@ export default function TasksView({ currentUserName }: Props) {
                   <Label className="text-xs text-muted-foreground mb-1.5 block">
                     Bucket
                   </Label>
-                  {/* Show locked badge when a specific bucket is active, still allow override */}
                   <Select
                     value={selectedBucketId}
                     onValueChange={setSelectedBucketId}
@@ -592,7 +436,7 @@ export default function TasksView({ currentUserName }: Props) {
               {visibleTasks.map((task) => {
                 globalIdx += 1;
                 const idx = globalIdx;
-                const bucketColor = task.bucketId
+                const taskBucketColor = task.bucketId
                   ? (buckets.find(
                       (b) => b.id.toString() === task.bucketId?.toString(),
                     )?.color ?? "#94a3b8")
@@ -606,7 +450,7 @@ export default function TasksView({ currentUserName }: Props) {
                       "flex items-start gap-3 bg-card border border-border rounded-xl px-4 py-3.5 shadow-sm transition-opacity border-l-4",
                       task.completed && "opacity-60",
                     )}
-                    style={{ borderLeftColor: bucketColor }}
+                    style={{ borderLeftColor: taskBucketColor }}
                   >
                     <Checkbox
                       data-ocid={`todo.checkbox.${idx}`}
@@ -641,7 +485,7 @@ export default function TasksView({ currentUserName }: Props) {
                         {activeBucketId === "all" && task.bucketId && (
                           <span
                             className="text-xs px-1.5 py-0.5 rounded-full text-white font-medium"
-                            style={{ backgroundColor: bucketColor }}
+                            style={{ backgroundColor: taskBucketColor }}
                           >
                             {
                               buckets.find(

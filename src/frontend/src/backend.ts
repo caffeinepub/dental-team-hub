@@ -163,6 +163,7 @@ export interface backendInterface {
     getUserProfiles(): Promise<Array<UserProfile>>;
     isCallerAdmin(): Promise<boolean>;
     register(name: string, inviteToken: string): Promise<void>;
+    renameBucket(id: bigint, newName: string): Promise<void>;
     revokeInvite(token: string): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     sendPrivateMessage(recipient: Principal, content: string): Promise<void>;
@@ -435,6 +436,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.register(arg0, arg1);
+            return result;
+        }
+    }
+    async renameBucket(arg0: bigint, arg1: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.renameBucket(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.renameBucket(arg0, arg1);
             return result;
         }
     }

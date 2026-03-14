@@ -86,6 +86,29 @@ export default function ChatView() {
         </p>
       </div>
 
+      {/* Input — moved to top */}
+      <div className="flex-shrink-0 px-6 py-4 border-b border-border bg-card">
+        <div className="flex gap-2">
+          <Input
+            data-ocid="chat.input"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Message the team..."
+            disabled={isPending}
+            className="flex-1"
+          />
+          <Button
+            data-ocid="chat.submit_button"
+            onClick={handleSend}
+            disabled={isPending || !input.trim()}
+            size="icon"
+          >
+            <Send className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+
       {/* Messages */}
       <ScrollArea className="flex-1 px-6 py-4">
         {isLoading && (
@@ -187,29 +210,6 @@ export default function ChatView() {
         )}
         <div ref={bottomRef} />
       </ScrollArea>
-
-      {/* Input */}
-      <div className="flex-shrink-0 px-6 py-4 border-t border-border bg-card">
-        <div className="flex gap-2">
-          <Input
-            data-ocid="chat.input"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Message the team..."
-            disabled={isPending}
-            className="flex-1"
-          />
-          <Button
-            data-ocid="chat.submit_button"
-            onClick={handleSend}
-            disabled={isPending || !input.trim()}
-            size="icon"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

@@ -10,16 +10,41 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Copy, Loader2, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  Check,
+  Copy,
+  Loader2,
+  Pencil,
+  Plus,
+  ShieldCheck,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Invite } from "../backend.d";
 import { InviteStatus } from "../backend.d";
 import {
+  useCreateBucket,
   useCreateInvite,
+  useDeleteBucket,
+  useGetBuckets,
   useGetInvites,
+  useRenameBucket,
   useRevokeInvite,
 } from "../hooks/useQueries";
+
+const PRESET_COLORS = [
+  { label: "Red", value: "#ef4444" },
+  { label: "Orange", value: "#f97316" },
+  { label: "Amber", value: "#f59e0b" },
+  { label: "Green", value: "#22c55e" },
+  { label: "Teal", value: "#14b8a6" },
+  { label: "Blue", value: "#3b82f6" },
+  { label: "Purple", value: "#a855f7" },
+  { label: "Pink", value: "#ec4899" },
+];
 
 function formatDate(nanoseconds: bigint): string {
   const ms = Number(nanoseconds / 1_000_000n);
@@ -64,8 +89,23 @@ export default function AdminPage() {
   const { data: invites, isLoading } = useGetInvites();
   const { mutate: createInvite, isPending: isCreating } = useCreateInvite();
   const { mutate: revokeInvite, isPending: isRevoking } = useRevokeInvite();
+  const { data: buckets = [], isLoading: bucketsLoading } = useGetBuckets();
+  const { mutate: createBucket, isPending: creatingBucket } = useCreateBucket();
+  const { mutate: deleteBucket } = useDeleteBucket();
+  const { mutate: renameBucket } = useRenameBucket();
+
   const [newInviteUrl, setNewInviteUrl] = useState<string | null>(null);
   const [revokingToken, setRevokingToken] = useState<string | null>(null);
+
+  // Bucket form state
+  const [bucketName, setBucketName] = useState("");
+  const [bucketColor, setBucketColor] = useState(PRESET_COLORS[0].value);
+  const [deletingBucketId, setDeletingBucketId] = useState<bigint | null>(null);
+
+  // Rename state
+  const [editingBucketId, setEditingBucketId] = useState<bigint | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [renamingBucketId, setRenamingBucketId] = useState<bigint | null>(null);
 
   const handleGenerate = () => {
     createInvite(undefined, {
@@ -104,6 +144,66 @@ export default function AdminPage() {
     });
   };
 
+  const handleAddBucket = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bucketName.trim()) return;
+    createBucket(
+      { name: bucketName.trim(), color: bucketColor },
+      {
+        onSuccess: () => {
+          setBucketName("");
+          setBucketColor(PRESET_COLORS[0].value);
+          toast.success("Bucket created");
+        },
+        onError: () => toast.error("Failed to create bucket"),
+      },
+    );
+  };
+
+  const handleDeleteBucket = (id: bigint) => {
+    setDeletingBucketId(id);
+    deleteBucket(id, {
+      onSuccess: () => {
+        setDeletingBucketId(null);
+        toast.success("Bucket deleted");
+      },
+      onError: () => {
+        setDeletingBucketId(null);
+        toast.error("Failed to delete bucket");
+      },
+    });
+  };
+
+  const handleStartEdit = (id: bigint, currentName: string) => {
+    setEditingBucketId(id);
+    setEditingName(currentName);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingBucketId(null);
+    setEditingName("");
+  };
+
+  const handleSaveRename = (id: bigint) => {
+    if (!editingName.trim()) return;
+    setRenamingBucketId(id);
+    renameBucket(
+      { id, newName: editingName.trim() },
+      {
+        onSuccess: () => {
+          setEditingBucketId(null);
+          setEditingName("");
+          setRenamingBucketId(null);
+          toast.success("Bucket renamed");
+        },
+        onError: () => {
+          setRenamingBucketId(null);
+          toast.error("Failed to rename bucket");
+        },
+      },
+    );
+  };
+
   return (
     <div data-ocid="admin.page" className="flex flex-col h-full overflow-auto">
       {/* Header */}
@@ -116,7 +216,7 @@ export default function AdminPage() {
             Admin
           </h1>
           <p className="text-xs text-muted-foreground">
-            Manage team invitations
+            Manage team invitations and task buckets
           </p>
         </div>
       </div>
@@ -160,6 +260,185 @@ export default function AdminPage() {
               </Button>
             </div>
           )}
+        </section>
+
+        {/* Manage Buckets */}
+        <section className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-border">
+            <h2 className="font-semibold text-foreground">Manage Buckets</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Create, rename, and manage color-coded task buckets for your team.
+            </p>
+          </div>
+
+          <div className="p-6 space-y-4">
+            {/* Existing buckets */}
+            {bucketsLoading ? (
+              <div data-ocid="bucket.loading_state" className="space-y-2">
+                {[1, 2].map((i) => (
+                  <Skeleton key={i} className="h-10 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : buckets.length === 0 ? (
+              <div
+                data-ocid="bucket.empty_state"
+                className="text-center py-6 text-sm text-muted-foreground"
+              >
+                No buckets yet. Create your first one below.
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {buckets.map((bucket, i) => (
+                  <li
+                    key={bucket.id.toString()}
+                    data-ocid={`bucket.item.${i + 1}`}
+                    className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border bg-muted/30"
+                  >
+                    <span
+                      className="w-3 h-3 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: bucket.color }}
+                    />
+                    {editingBucketId === bucket.id ? (
+                      <>
+                        <Input
+                          data-ocid={`bucket.input.${i + 1}`}
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSaveRename(bucket.id);
+                            if (e.key === "Escape") handleCancelEdit();
+                          }}
+                          className="h-7 text-sm flex-1"
+                          autoFocus
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          data-ocid={`bucket.save_button.${i + 1}`}
+                          onClick={() => handleSaveRename(bucket.id)}
+                          disabled={
+                            renamingBucketId === bucket.id ||
+                            !editingName.trim()
+                          }
+                          className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                          aria-label="Save rename"
+                        >
+                          {renamingBucketId === bucket.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Check className="w-3.5 h-3.5" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          data-ocid={`bucket.cancel_button.${i + 1}`}
+                          onClick={handleCancelEdit}
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          aria-label="Cancel rename"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex-1 text-sm font-medium text-foreground">
+                          {bucket.name}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          data-ocid={`bucket.edit_button.${i + 1}`}
+                          onClick={() =>
+                            handleStartEdit(bucket.id, bucket.name)
+                          }
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          aria-label={`Rename ${bucket.name}`}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          data-ocid={`bucket.delete_button.${i + 1}`}
+                          onClick={() => handleDeleteBucket(bucket.id)}
+                          disabled={deletingBucketId === bucket.id}
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          aria-label={`Delete ${bucket.name}`}
+                        >
+                          {deletingBucketId === bucket.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3.5 h-3.5" />
+                          )}
+                        </Button>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {/* Create bucket form */}
+            <form
+              onSubmit={handleAddBucket}
+              className="flex items-end gap-3 pt-2 border-t border-border"
+            >
+              <div className="flex-1">
+                <label
+                  htmlFor="bucket-name-input"
+                  className="text-xs text-muted-foreground mb-1.5 block font-medium"
+                >
+                  Bucket name
+                </label>
+                <Input
+                  id="bucket-name-input"
+                  data-ocid="bucket.input"
+                  value={bucketName}
+                  onChange={(e) => setBucketName(e.target.value)}
+                  placeholder="e.g. Morning Prep, Patient Followups"
+                  className="h-9"
+                />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1.5 font-medium">
+                  Color
+                </p>
+                <div className="flex gap-1.5 items-center h-9">
+                  {PRESET_COLORS.map((c) => (
+                    <button
+                      key={c.value}
+                      type="button"
+                      onClick={() => setBucketColor(c.value)}
+                      title={c.label}
+                      className={cn(
+                        "w-5 h-5 rounded-full border-2 transition-all hover:scale-110",
+                        bucketColor === c.value
+                          ? "border-foreground scale-110"
+                          : "border-transparent",
+                      )}
+                      style={{ backgroundColor: c.value }}
+                    />
+                  ))}
+                </div>
+              </div>
+              <Button
+                type="submit"
+                data-ocid="bucket.primary_button"
+                disabled={creatingBucket || !bucketName.trim()}
+                className="h-9"
+              >
+                {creatingBucket ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 mr-1.5" />
+                    Create Bucket
+                  </>
+                )}
+              </Button>
+            </form>
+          </div>
         </section>
 
         {/* Invites table */}

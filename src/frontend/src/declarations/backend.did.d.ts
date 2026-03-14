@@ -77,6 +77,7 @@ export interface _SERVICE {
   'getUserProfiles' : ActorMethod<[], Array<UserProfile>>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'register' : ActorMethod<[string, string], undefined>,
+  'renameBucket' : ActorMethod<[bigint, string], undefined>,
   'revokeInvite' : ActorMethod<[string], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'sendPrivateMessage' : ActorMethod<[Principal, string], undefined>,

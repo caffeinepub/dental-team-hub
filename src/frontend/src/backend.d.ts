@@ -80,6 +80,7 @@ export interface backendInterface {
     getUserProfiles(): Promise<Array<UserProfile>>;
     isCallerAdmin(): Promise<boolean>;
     register(name: string, inviteToken: string): Promise<void>;
+    renameBucket(id: bigint, newName: string): Promise<void>;
     revokeInvite(token: string): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     sendPrivateMessage(recipient: Principal, content: string): Promise<void>;

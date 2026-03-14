@@ -1,35 +1,25 @@
 # Dental Team Hub
 
 ## Current State
-New project. No existing code.
+Admins can create and delete color-coded task buckets via the Admin page. There is no way to rename an existing bucket.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Secure multi-user sign-in with role-based access (admin, staff)
-- Group chat: send messages visible to the whole team
-- Private threads: direct messages between two users
-- Shared to-do list: create tasks, assign to team members, check off, delete
-- User directory: list all registered users with active/inactive status
-- Persistent on-chain storage for users, messages, and tasks via Motoko backend
+- `renameBucket(id: Nat, newName: Text)` backend function (admin-only)
+- `useRenameBucket` mutation hook in `useQueries.ts`
+- `renameBucket` method in `backend.d.ts`
+- Inline rename UI on each bucket row in AdminPage: a pencil/edit icon that expands an inline input to rename the bucket and confirm/cancel
 
 ### Modify
-- N/A (new project)
+- `AdminPage.tsx`: add edit state per bucket, inline rename input + save/cancel buttons
+- `backend.d.ts`: add `renameBucket(id: bigint, newName: string): Promise<void>`
 
 ### Remove
-- N/A (new project)
+- Nothing
 
 ## Implementation Plan
-1. Select `authorization` component for secure multi-user sign-in
-2. Generate Motoko backend with:
-   - User profiles (name, role, last-seen timestamp for active status)
-   - Group chat messages (sender, content, timestamp)
-   - Private messages (sender, recipient, content, timestamp)
-   - Tasks (title, assignee, completed flag, creator, timestamp)
-3. Frontend pages:
-   - Login / register screen
-   - Main layout with sidebar nav (Chat, Tasks, Directory)
-   - Group Chat view with message list and input
-   - Private thread view per user
-   - To-do list view with task creation, assignment, check-off, delete
-   - User directory panel showing active status based on last-seen
+1. Add `renameBucket` to `src/backend/main.mo` (admin-only, updates bucket name in-place)
+2. Add `renameBucket` to `src/frontend/src/backend.d.ts`
+3. Add `useRenameBucket` hook to `src/frontend/src/hooks/useQueries.ts`
+4. Update `AdminPage.tsx` to allow inline renaming of each bucket

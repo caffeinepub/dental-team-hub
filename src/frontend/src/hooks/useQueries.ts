@@ -159,6 +159,18 @@ export function useCreateBucket() {
   });
 }
 
+export function useRenameBucket() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, newName }: { id: bigint; newName: string }) => {
+      if (!actor) throw new Error("Actor not available");
+      await actor.renameBucket(id, newName);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["buckets"] }),
+  });
+}
+
 export function useDeleteBucket() {
   const { actor } = useActor();
   const qc = useQueryClient();
