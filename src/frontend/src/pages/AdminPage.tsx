@@ -16,10 +16,13 @@ import { cn } from "@/lib/utils";
 import {
   Building2,
   Check,
+  ChevronDown,
+  ChevronRight,
   Copy,
   ExternalLink,
   Eye,
   EyeOff,
+  Link2,
   Loader2,
   Pencil,
   Plus,
@@ -29,18 +32,32 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import type { CompanyEntry, Invite } from "../backend.d";
+import type {
+  CompanyEntry,
+  Invite,
+  ResourceCategory,
+  ResourceEntry,
+} from "../backend.d";
 import { CompanyEntryCategory, InviteStatus } from "../backend.d";
 import {
   useAddCompanyEntry,
+  useAddResourceEntry,
   useCreateBucket,
   useCreateInvite,
+  useCreateResourceCategory,
   useDeleteBucket,
   useDeleteCompanyEntry,
+  useDeleteResourceCategory,
+  useDeleteResourceEntry,
+  useEditCompanyEntry,
+  useEditResourceEntry,
   useGetBuckets,
   useGetCompanyEntries,
   useGetInvites,
+  useGetResourceCategories,
+  useGetResourceEntries,
   useRenameBucket,
+  useRenameResourceCategory,
   useRevokeInvite,
 } from "../hooks/useQueries";
 
@@ -135,6 +152,114 @@ function CompanyEntryRow({
   onDelete: (id: bigint) => void;
   isDeleting: boolean;
 }) {
+  const { mutate: editEntry, isPending: isSaving } = useEditCompanyEntry();
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(entry.name);
+  const [editUrl, setEditUrl] = useState(entry.website_url);
+  const [editPassword, setEditPassword] = useState(entry.password);
+  const [showEditPw, setShowEditPw] = useState(false);
+
+  const handleSave = () => {
+    if (!editName.trim() || !editUrl.trim()) return;
+    editEntry(
+      {
+        id: entry.id,
+        name: editName.trim(),
+        website_url: editUrl.trim(),
+        password: editPassword,
+      },
+      {
+        onSuccess: () => {
+          setEditing(false);
+          toast.success("Entry updated");
+        },
+        onError: () => toast.error("Failed to update entry"),
+      },
+    );
+  };
+
+  const handleCancelEdit = () => {
+    setEditing(false);
+    setEditName(entry.name);
+    setEditUrl(entry.website_url);
+    setEditPassword(entry.password);
+  };
+
+  if (editing) {
+    return (
+      <div
+        data-ocid={`company.item.${index}`}
+        className="flex flex-col gap-2 px-4 py-3 rounded-lg border border-primary/30 bg-primary/5"
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <Input
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            placeholder="Name"
+            className="h-8 text-sm"
+            autoFocus
+          />
+          <Input
+            value={editUrl}
+            onChange={(e) => setEditUrl(e.target.value)}
+            placeholder="https://example.com"
+            className="h-8 text-sm"
+            type="url"
+          />
+          <div className="relative">
+            <Input
+              value={editPassword}
+              onChange={(e) => setEditPassword(e.target.value)}
+              placeholder="Password"
+              type={showEditPw ? "text" : "password"}
+              className="h-8 text-sm pr-8"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="absolute right-0 top-0 h-8 w-8 text-muted-foreground hover:text-foreground"
+              onClick={() => setShowEditPw((v) => !v)}
+              aria-label={showEditPw ? "Hide password" : "Show password"}
+            >
+              {showEditPw ? (
+                <EyeOff className="w-3.5 h-3.5" />
+              ) : (
+                <Eye className="w-3.5 h-3.5" />
+              )}
+            </Button>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            className="h-7"
+            data-ocid={`company.save_button.${index}`}
+            onClick={handleSave}
+            disabled={isSaving || !editName.trim() || !editUrl.trim()}
+          >
+            {isSaving ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+            ) : (
+              <Check className="w-3.5 h-3.5 mr-1" />
+            )}
+            Save
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7"
+            data-ocid={`company.cancel_button.${index}`}
+            onClick={handleCancelEdit}
+          >
+            <X className="w-3.5 h-3.5 mr-1" />
+            Cancel
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       data-ocid={`company.item.${index}`}
@@ -157,6 +282,16 @@ function CompanyEntryRow({
       <div className="flex-shrink-0">
         <PasswordCell password={entry.password} />
       </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        data-ocid={`company.edit_button.${index}`}
+        onClick={() => setEditing(true)}
+        className="h-7 w-7 text-muted-foreground hover:text-primary flex-shrink-0"
+        aria-label={`Edit ${entry.name}`}
+      >
+        <Pencil className="w-3.5 h-3.5" />
+      </Button>
       <Button
         variant="ghost"
         size="icon"
@@ -380,6 +515,551 @@ function CompanyDirectorySection() {
               );
             })}
           </Tabs>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// ─── Resource Links Section ───────────────────────────────────────────────────
+
+function AddResourceEntryForm({ categoryId }: { categoryId: bigint }) {
+  const { mutate: addEntry, isPending } = useAddResourceEntry();
+  const [name, setName] = useState("");
+  const [url, setUrl] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !url.trim()) return;
+    addEntry(
+      { categoryId, name: name.trim(), url: url.trim(), password },
+      {
+        onSuccess: () => {
+          setName("");
+          setUrl("");
+          setPassword("");
+          toast.success("Entry added");
+        },
+        onError: () => toast.error("Failed to add entry"),
+      },
+    );
+  };
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="mt-3 pt-3 border-t border-border space-y-2"
+    >
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+        Add Link
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <Input
+          data-ocid="resource.entry.input"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Name"
+          className="h-8 text-sm"
+          required
+          aria-label="Entry name"
+        />
+        <Input
+          data-ocid="resource.entry.input"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://example.com"
+          className="h-8 text-sm"
+          type="url"
+          required
+          aria-label="Entry URL"
+        />
+        <div className="relative">
+          <Input
+            data-ocid="resource.entry.input"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password (optional)"
+            type={showPw ? "text" : "password"}
+            className="h-8 text-sm pr-8"
+            aria-label="Entry password"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute right-0 top-0 h-8 w-8 text-muted-foreground hover:text-foreground"
+            onClick={() => setShowPw((v) => !v)}
+            aria-label={showPw ? "Hide password" : "Show password"}
+          >
+            {showPw ? (
+              <EyeOff className="w-3.5 h-3.5" />
+            ) : (
+              <Eye className="w-3.5 h-3.5" />
+            )}
+          </Button>
+        </div>
+      </div>
+      <Button
+        type="submit"
+        data-ocid="resource.entry.submit_button"
+        disabled={isPending || !name.trim() || !url.trim()}
+        size="sm"
+        className="h-8"
+      >
+        {isPending ? (
+          <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+        ) : (
+          <Plus className="w-3.5 h-3.5 mr-1.5" />
+        )}
+        Add
+      </Button>
+    </form>
+  );
+}
+
+function ResourceEntryRow({
+  entry,
+  index,
+}: {
+  entry: ResourceEntry;
+  index: number;
+}) {
+  const { mutate: deleteEntry, isPending: isDeleting } =
+    useDeleteResourceEntry();
+  const { mutate: editEntry, isPending: isSaving } = useEditResourceEntry();
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(entry.name);
+  const [editUrl, setEditUrl] = useState(entry.url);
+  const [editPassword, setEditPassword] = useState(entry.password);
+  const [showEditPw, setShowEditPw] = useState(false);
+
+  const handleSave = () => {
+    if (!editName.trim() || !editUrl.trim()) return;
+    editEntry(
+      {
+        id: entry.id,
+        name: editName.trim(),
+        url: editUrl.trim(),
+        password: editPassword,
+      },
+      {
+        onSuccess: () => {
+          setEditing(false);
+          toast.success("Entry updated");
+        },
+        onError: () => toast.error("Failed to update entry"),
+      },
+    );
+  };
+
+  const handleCancelEdit = () => {
+    setEditing(false);
+    setEditName(entry.name);
+    setEditUrl(entry.url);
+    setEditPassword(entry.password);
+  };
+
+  if (editing) {
+    return (
+      <div
+        data-ocid={`resource.entry.item.${index}`}
+        className="flex flex-col gap-2 px-4 py-3 rounded-lg border border-primary/30 bg-primary/5"
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <Input
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            placeholder="Name"
+            className="h-8 text-sm"
+            autoFocus
+          />
+          <Input
+            value={editUrl}
+            onChange={(e) => setEditUrl(e.target.value)}
+            placeholder="https://example.com"
+            className="h-8 text-sm"
+            type="url"
+          />
+          <div className="relative">
+            <Input
+              value={editPassword}
+              onChange={(e) => setEditPassword(e.target.value)}
+              placeholder="Password"
+              type={showEditPw ? "text" : "password"}
+              className="h-8 text-sm pr-8"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="absolute right-0 top-0 h-8 w-8 text-muted-foreground hover:text-foreground"
+              onClick={() => setShowEditPw((v) => !v)}
+              aria-label={showEditPw ? "Hide password" : "Show password"}
+            >
+              {showEditPw ? (
+                <EyeOff className="w-3.5 h-3.5" />
+              ) : (
+                <Eye className="w-3.5 h-3.5" />
+              )}
+            </Button>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            className="h-7"
+            onClick={handleSave}
+            disabled={isSaving || !editName.trim() || !editUrl.trim()}
+          >
+            {isSaving ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+            ) : (
+              <Check className="w-3.5 h-3.5 mr-1" />
+            )}
+            Save
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7"
+            onClick={handleCancelEdit}
+          >
+            <X className="w-3.5 h-3.5 mr-1" />
+            Cancel
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      data-ocid={`resource.entry.item.${index}`}
+      className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border bg-muted/20 hover:bg-muted/40 transition-colors"
+    >
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-sm text-foreground truncate">
+          {entry.name}
+        </p>
+        <a
+          href={entry.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-primary hover:underline flex items-center gap-1 mt-0.5 w-fit"
+        >
+          <ExternalLink className="w-3 h-3" />
+          <span className="truncate max-w-[240px]">{entry.url}</span>
+        </a>
+      </div>
+      <div className="flex-shrink-0">
+        <PasswordCell password={entry.password} />
+      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        data-ocid={`resource.entry.edit_button.${index}`}
+        onClick={() => setEditing(true)}
+        className="h-7 w-7 text-muted-foreground hover:text-foreground flex-shrink-0"
+        aria-label={`Edit ${entry.name}`}
+      >
+        <Pencil className="w-3.5 h-3.5" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        data-ocid={`resource.entry.delete_button.${index}`}
+        onClick={() =>
+          deleteEntry(entry.id, {
+            onSuccess: () => toast.success("Entry deleted"),
+            onError: () => toast.error("Failed to delete entry"),
+          })
+        }
+        disabled={isDeleting}
+        className="h-7 w-7 text-muted-foreground hover:text-destructive flex-shrink-0"
+        aria-label={`Delete ${entry.name}`}
+      >
+        {isDeleting ? (
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        ) : (
+          <Trash2 className="w-3.5 h-3.5" />
+        )}
+      </Button>
+    </div>
+  );
+}
+
+function ResourceCategoryPanel({
+  category,
+  entries,
+  index,
+}: {
+  category: ResourceCategory;
+  entries: ResourceEntry[];
+  index: number;
+}) {
+  const { mutate: deleteCategory, isPending: isDeleting } =
+    useDeleteResourceCategory();
+  const { mutate: renameCategory } = useRenameResourceCategory();
+  const [expanded, setExpanded] = useState(true);
+  const [renamingMode, setRenamingMode] = useState(false);
+  const [renamingValue, setRenamingValue] = useState(category.name);
+  const [isRenamingLoading, setIsRenamingLoading] = useState(false);
+
+  const handleRename = () => {
+    if (!renamingValue.trim()) return;
+    setIsRenamingLoading(true);
+    renameCategory(
+      { id: category.id, newName: renamingValue.trim() },
+      {
+        onSuccess: () => {
+          setRenamingMode(false);
+          setIsRenamingLoading(false);
+          toast.success("Category renamed");
+        },
+        onError: () => {
+          setIsRenamingLoading(false);
+          toast.error("Failed to rename category");
+        },
+      },
+    );
+  };
+
+  const handleCancelRename = () => {
+    setRenamingMode(false);
+    setRenamingValue(category.name);
+  };
+
+  return (
+    <div
+      data-ocid={`resource.category.item.${index}`}
+      className="border border-border rounded-xl overflow-hidden"
+    >
+      {/* Category header */}
+      <div className="flex items-center gap-2 px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors">
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="flex items-center gap-2 flex-1 min-w-0 text-left"
+          aria-expanded={expanded}
+          aria-label={`${expanded ? "Collapse" : "Expand"} ${category.name}`}
+        >
+          {expanded ? (
+            <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          ) : (
+            <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          )}
+          {renamingMode ? (
+            <div
+              role="presentation"
+              className="flex items-center gap-2 flex-1"
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+            >
+              <Input
+                value={renamingValue}
+                onChange={(e) => setRenamingValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleRename();
+                  if (e.key === "Escape") handleCancelRename();
+                }}
+                className="h-7 text-sm flex-1"
+                autoFocus
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                data-ocid={`resource.category.edit_button.${index}`}
+                onClick={handleRename}
+                disabled={isRenamingLoading || !renamingValue.trim()}
+                className="h-7 w-7 text-emerald-600 hover:text-emerald-700"
+                aria-label="Save rename"
+              >
+                {isRenamingLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Check className="w-3.5 h-3.5" />
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleCancelRename}
+                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                aria-label="Cancel rename"
+              >
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          ) : (
+            <span className="font-semibold text-sm text-foreground truncate">
+              {category.name}
+            </span>
+          )}
+        </button>
+        {!renamingMode && (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <span className="text-xs text-muted-foreground mr-1">
+              {entries.length} {entries.length === 1 ? "link" : "links"}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              data-ocid={`resource.category.edit_button.${index}`}
+              onClick={() => {
+                setRenamingMode(true);
+                setExpanded(true);
+              }}
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              aria-label={`Rename ${category.name}`}
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              data-ocid={`resource.category.delete_button.${index}`}
+              onClick={() =>
+                deleteCategory(category.id, {
+                  onSuccess: () => toast.success("Category deleted"),
+                  onError: () => toast.error("Failed to delete category"),
+                })
+              }
+              disabled={isDeleting}
+              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+              aria-label={`Delete ${category.name}`}
+            >
+              {isDeleting ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="w-3.5 h-3.5" />
+              )}
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Category body */}
+      {expanded && (
+        <div className="p-4 space-y-2">
+          {entries.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-3">
+              No links yet. Add one below.
+            </p>
+          ) : (
+            entries.map((entry, i) => (
+              <ResourceEntryRow
+                key={entry.id.toString()}
+                entry={entry}
+                index={i + 1}
+              />
+            ))
+          )}
+          <AddResourceEntryForm categoryId={category.id} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ResourceLinksSection() {
+  const { data: categories = [], isLoading: catsLoading } =
+    useGetResourceCategories();
+  const { data: entries = [], isLoading: entriesLoading } =
+    useGetResourceEntries();
+  const { mutate: createCategory, isPending: isCreating } =
+    useCreateResourceCategory();
+  const [newCategoryName, setNewCategoryName] = useState("");
+
+  const isLoading = catsLoading || entriesLoading;
+
+  const handleCreateCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCategoryName.trim()) return;
+    createCategory(newCategoryName.trim(), {
+      onSuccess: () => {
+        setNewCategoryName("");
+        toast.success("Category created");
+      },
+      onError: () => toast.error("Failed to create category"),
+    });
+  };
+
+  const entriesForCategory = (catId: bigint) =>
+    entries.filter((e) => e.categoryId === catId);
+
+  return (
+    <section
+      data-ocid="resource.section"
+      className="bg-card border border-border rounded-xl overflow-hidden"
+    >
+      <div className="px-6 py-4 border-b border-border flex items-center gap-3">
+        <Link2 className="w-4 h-4 text-muted-foreground" />
+        <div>
+          <h2 className="font-semibold text-foreground">Resource Links</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Organize site links and credentials by custom categories.
+          </p>
+        </div>
+      </div>
+
+      <div className="p-6 space-y-4">
+        {/* Create category form */}
+        <form
+          onSubmit={handleCreateCategory}
+          className="flex items-center gap-3"
+        >
+          <Input
+            data-ocid="resource.category.input"
+            value={newCategoryName}
+            onChange={(e) => setNewCategoryName(e.target.value)}
+            placeholder="New category name (e.g. Patient Portals)"
+            className="h-9 flex-1"
+          />
+          <Button
+            type="submit"
+            data-ocid="resource.category.primary_button"
+            disabled={isCreating || !newCategoryName.trim()}
+            className="h-9 whitespace-nowrap"
+          >
+            {isCreating ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <>
+                <Plus className="w-4 h-4 mr-1.5" />
+                Add Category
+              </>
+            )}
+          </Button>
+        </form>
+
+        {/* Categories list */}
+        {isLoading ? (
+          <div data-ocid="resource.loading_state" className="space-y-2">
+            {[1, 2].map((i) => (
+              <Skeleton key={i} className="h-12 w-full rounded-xl" />
+            ))}
+          </div>
+        ) : categories.length === 0 ? (
+          <div
+            data-ocid="resource.empty_state"
+            className="text-center py-10 text-sm text-muted-foreground"
+          >
+            <Link2 className="w-8 h-8 mx-auto mb-2 text-muted-foreground/30" />
+            No categories yet. Create one above to start organizing links.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {categories.map((cat, i) => (
+              <ResourceCategoryPanel
+                key={cat.id.toString()}
+                category={cat}
+                entries={entriesForCategory(cat.id)}
+                index={i + 1}
+              />
+            ))}
+          </div>
         )}
       </div>
     </section>
@@ -744,6 +1424,9 @@ export default function AdminPage() {
 
         {/* Company Directory */}
         <CompanyDirectorySection />
+
+        {/* Resource Links */}
+        <ResourceLinksSection />
 
         {/* Invites table */}
         <section className="bg-card border border-border rounded-xl overflow-hidden">

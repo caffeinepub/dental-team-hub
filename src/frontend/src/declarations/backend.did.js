@@ -61,6 +61,17 @@ export const Message = IDL.Record({
   'timestamp' : Time,
   'senderName' : IDL.Text,
 });
+export const ResourceCategory = IDL.Record({
+  'id' : IDL.Nat,
+  'name' : IDL.Text,
+});
+export const ResourceEntry = IDL.Record({
+  'id' : IDL.Nat,
+  'url' : IDL.Text,
+  'categoryId' : IDL.Nat,
+  'password' : IDL.Text,
+  'name' : IDL.Text,
+});
 export const Task = IDL.Record({
   'id' : IDL.Nat,
   'assignee' : Assignee,
@@ -80,9 +91,15 @@ export const idlService = IDL.Service({
       [],
     ),
   'addMessage' : IDL.Func([IDL.Text], [], []),
+  'addResourceEntry' : IDL.Func(
+      [IDL.Nat, IDL.Text, IDL.Text, IDL.Text],
+      [],
+      [],
+    ),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'createBucket' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'createInvite' : IDL.Func([], [IDL.Text], []),
+  'createResourceCategory' : IDL.Func([IDL.Text], [], []),
   'createTask' : IDL.Func(
       [IDL.Text, IDL.Text, Assignee, IDL.Opt(IDL.Nat)],
       [],
@@ -90,7 +107,19 @@ export const idlService = IDL.Service({
     ),
   'deleteBucket' : IDL.Func([IDL.Nat], [], []),
   'deleteCompanyEntry' : IDL.Func([IDL.Nat], [], []),
+  'deleteResourceCategory' : IDL.Func([IDL.Nat], [], []),
+  'deleteResourceEntry' : IDL.Func([IDL.Nat], [], []),
   'deleteTask' : IDL.Func([IDL.Nat], [], []),
+  'editResourceEntry' : IDL.Func(
+      [IDL.Nat, IDL.Text, IDL.Text, IDL.Text],
+      [],
+      [],
+    ),
+  'editTask' : IDL.Func(
+      [IDL.Nat, IDL.Text, IDL.Text, IDL.Opt(IDL.Nat)],
+      [],
+      [],
+    ),
   'getBuckets' : IDL.Func([], [IDL.Vec(Bucket)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
@@ -102,6 +131,12 @@ export const idlService = IDL.Service({
     ),
   'getInvites' : IDL.Func([], [IDL.Vec(Invite)], ['query']),
   'getMessages' : IDL.Func([], [IDL.Vec(Message)], ['query']),
+  'getResourceCategories' : IDL.Func(
+      [],
+      [IDL.Vec(ResourceCategory)],
+      ['query'],
+    ),
+  'getResourceEntries' : IDL.Func([], [IDL.Vec(ResourceEntry)], ['query']),
   'getTasks' : IDL.Func([], [IDL.Vec(Task)], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
@@ -110,11 +145,14 @@ export const idlService = IDL.Service({
     ),
   'getUserProfiles' : IDL.Func([], [IDL.Vec(UserProfile)], ['query']),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'moveTaskToResourceCategory' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
   'register' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'renameBucket' : IDL.Func([IDL.Nat, IDL.Text], [], []),
+  'renameResourceCategory' : IDL.Func([IDL.Nat, IDL.Text], [], []),
   'revokeInvite' : IDL.Func([IDL.Text], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'sendPrivateMessage' : IDL.Func([IDL.Principal, IDL.Text], [], []),
+  'toggleTaskCompleted' : IDL.Func([IDL.Nat], [], []),
   'updateLastSeen' : IDL.Func([], [], []),
   'updateTask' : IDL.Func([IDL.Nat, IDL.Bool], [], []),
 });
@@ -175,6 +213,14 @@ export const idlFactory = ({ IDL }) => {
     'timestamp' : Time,
     'senderName' : IDL.Text,
   });
+  const ResourceCategory = IDL.Record({ 'id' : IDL.Nat, 'name' : IDL.Text });
+  const ResourceEntry = IDL.Record({
+    'id' : IDL.Nat,
+    'url' : IDL.Text,
+    'categoryId' : IDL.Nat,
+    'password' : IDL.Text,
+    'name' : IDL.Text,
+  });
   const Task = IDL.Record({
     'id' : IDL.Nat,
     'assignee' : Assignee,
@@ -194,9 +240,15 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'addMessage' : IDL.Func([IDL.Text], [], []),
+    'addResourceEntry' : IDL.Func(
+        [IDL.Nat, IDL.Text, IDL.Text, IDL.Text],
+        [],
+        [],
+      ),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'createBucket' : IDL.Func([IDL.Text, IDL.Text], [], []),
     'createInvite' : IDL.Func([], [IDL.Text], []),
+    'createResourceCategory' : IDL.Func([IDL.Text], [], []),
     'createTask' : IDL.Func(
         [IDL.Text, IDL.Text, Assignee, IDL.Opt(IDL.Nat)],
         [],
@@ -204,7 +256,19 @@ export const idlFactory = ({ IDL }) => {
       ),
     'deleteBucket' : IDL.Func([IDL.Nat], [], []),
     'deleteCompanyEntry' : IDL.Func([IDL.Nat], [], []),
+    'deleteResourceCategory' : IDL.Func([IDL.Nat], [], []),
+    'deleteResourceEntry' : IDL.Func([IDL.Nat], [], []),
     'deleteTask' : IDL.Func([IDL.Nat], [], []),
+    'editResourceEntry' : IDL.Func(
+        [IDL.Nat, IDL.Text, IDL.Text, IDL.Text],
+        [],
+        [],
+      ),
+    'editTask' : IDL.Func(
+        [IDL.Nat, IDL.Text, IDL.Text, IDL.Opt(IDL.Nat)],
+        [],
+        [],
+      ),
     'getBuckets' : IDL.Func([], [IDL.Vec(Bucket)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
@@ -216,6 +280,12 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getInvites' : IDL.Func([], [IDL.Vec(Invite)], ['query']),
     'getMessages' : IDL.Func([], [IDL.Vec(Message)], ['query']),
+    'getResourceCategories' : IDL.Func(
+        [],
+        [IDL.Vec(ResourceCategory)],
+        ['query'],
+      ),
+    'getResourceEntries' : IDL.Func([], [IDL.Vec(ResourceEntry)], ['query']),
     'getTasks' : IDL.Func([], [IDL.Vec(Task)], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
@@ -224,11 +294,14 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getUserProfiles' : IDL.Func([], [IDL.Vec(UserProfile)], ['query']),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'moveTaskToResourceCategory' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
     'register' : IDL.Func([IDL.Text, IDL.Text], [], []),
     'renameBucket' : IDL.Func([IDL.Nat, IDL.Text], [], []),
+    'renameResourceCategory' : IDL.Func([IDL.Nat, IDL.Text], [], []),
     'revokeInvite' : IDL.Func([IDL.Text], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'sendPrivateMessage' : IDL.Func([IDL.Principal, IDL.Text], [], []),
+    'toggleTaskCompleted' : IDL.Func([IDL.Nat], [], []),
     'updateLastSeen' : IDL.Func([], [], []),
     'updateTask' : IDL.Func([IDL.Nat, IDL.Bool], [], []),
   });

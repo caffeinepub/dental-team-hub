@@ -1,27 +1,22 @@
 # Dental Team Hub
 
 ## Current State
-Admin page has two sections: Generate Invite Links and Manage Buckets (color-coded task categories). All data is stored on-chain via Motoko. Admin-only access is enforced at the canister level.
+The Company Directory on the Admin page supports adding and deleting entries (Labs, Dental Supply, Insurance tabs). There is no way to edit an existing entry's name, URL, or password.
 
 ## Requested Changes (Diff)
 
 ### Add
-- A new `CompanyEntry` type in the backend with fields: id, category (labs | dental_supply | insurance), name, url, password, createdAt.
-- Backend functions (admin-only): `addCompanyEntry`, `deleteCompanyEntry`, `getCompanyEntries`.
-- A new "Company Directory" section in the Admin page, below the existing sections.
-- Three tabs inside that section: Labs, Dental Supply, Insurance.
-- Each tab shows a list of saved entries (name, link that opens in new tab, password with show/hide toggle).
-- A form at the bottom of each tab to add a new entry (name, URL, password fields).
-- Delete button per entry (admin only).
+- Backend: `editCompanyEntry(id, name, website_url, password)` function (admin-only)
+- Frontend: Inline edit mode on each `CompanyEntryRow` — pencil icon opens editable fields for name, URL, and password; Save/Cancel controls confirm or discard changes
+- Frontend: `useEditCompanyEntry` hook in useQueries.ts
 
 ### Modify
-- AdminPage.tsx: Add Company Directory section with tabs and entry management UI.
+- `CompanyEntryRow` component: add edit state and editing UI (matching the pattern used by `ResourceEntryRow`)
 
 ### Remove
-- Nothing.
+- Nothing
 
 ## Implementation Plan
-1. Add `CompanyEntry` type and CRUD functions to `main.mo` (admin-only).
-2. Regenerate `backend.d.ts` bindings.
-3. Add `useGetCompanyEntries`, `useAddCompanyEntry`, `useDeleteCompanyEntry` hooks.
-4. Build the Company Directory UI section in `AdminPage.tsx` with tabs for each category.
+1. Add `editCompanyEntry` to main.mo (admin-only, updates name/website_url/password by id)
+2. Add `useEditCompanyEntry` mutation hook to useQueries.ts
+3. Update `CompanyEntryRow` in AdminPage.tsx to support inline editing with pencil/save/cancel controls

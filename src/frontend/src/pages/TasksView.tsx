@@ -13,7 +13,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { Principal } from "@icp-sdk/core/principal";
-import { ClipboardList, Loader2, Plus, Trash2 } from "lucide-react";
+import {
+  Check,
+  ClipboardList,
+  Loader2,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Assignee } from "../backend.d";
@@ -22,6 +30,7 @@ import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useCreateTask,
   useDeleteTask,
+  useEditTask,
   useGetBuckets,
   useGetTasks,
   useGetUserProfiles,
@@ -30,6 +39,13 @@ import {
 
 interface Props {
   currentUserName: string;
+}
+
+interface EditState {
+  id: bigint;
+  title: string;
+  description: string;
+  bucketId: string;
 }
 
 export default function TasksView({ currentUserName }: Props) {
@@ -47,6 +63,7 @@ export default function TasksView({ currentUserName }: Props) {
   const { mutate: createTask, isPending: creating } = useCreateTask();
   const { mutate: updateTask, isPending: updating } = useUpdateTask();
   const { mutate: deleteTask, isPending: deleting } = useDeleteTask();
+  const { mutate: editTask, isPending: editing } = useEditTask();
 
   // Selected bucket state: "all" | "none" (general) | bucket id string
   const [activeBucketId, setActiveBucketId] = useState<string>("all");
@@ -56,6 +73,7 @@ export default function TasksView({ currentUserName }: Props) {
   const [assigneeName, setAssigneeName] = useState("");
   const [selectedBucketId, setSelectedBucketId] = useState<string>("none");
   const [deletingId, setDeletingId] = useState<bigint | null>(null);
+  const [editState, setEditState] = useState<EditState | null>(null);
 
   const allNames = profiles?.map((p) => p.name) ?? [];
   const assigneeOptions = Array.from(new Set([currentUserName, ...allNames]));
@@ -126,6 +144,44 @@ export default function TasksView({ currentUserName }: Props) {
       },
     });
   };
+
+  const handleEditOpen = (task: {
+    id: bigint;
+    title: string;
+    description: string;
+    bucketId?: bigint;
+  }) => {
+    setEditState({
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      bucketId: task.bucketId != null ? task.bucketId.toString() : "none",
+    });
+  };
+
+  const handleEditSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editState || !editState.title.trim()) return;
+    const bucketId =
+      editState.bucketId !== "none" ? BigInt(editState.bucketId) : null;
+    editTask(
+      {
+        id: editState.id,
+        title: editState.title.trim(),
+        description: editState.description.trim(),
+        bucketId,
+      },
+      {
+        onSuccess: () => {
+          setEditState(null);
+          toast.success("Task updated");
+        },
+        onError: () => toast.error("Failed to update task"),
+      },
+    );
+  };
+
+  const handleEditCancel = () => setEditState(null);
 
   const allTasks = tasks ?? [];
 
@@ -442,6 +498,113 @@ export default function TasksView({ currentUserName }: Props) {
                     )?.color ?? "#94a3b8")
                   : "#94a3b8";
 
+                const isEditing = editState?.id === task.id;
+
+                if (isEditing && editState) {
+                  return (
+                    <div
+                      key={task.id.toString()}
+                      data-ocid={`todo.item.${idx}`}
+                      className="bg-card border border-primary/40 rounded-xl px-4 py-4 shadow-sm border-l-4"
+                      style={{ borderLeftColor: taskBucketColor }}
+                    >
+                      <form onSubmit={handleEditSave} className="space-y-3">
+                        <Input
+                          data-ocid="task.edit.input"
+                          value={editState.title}
+                          onChange={(e) =>
+                            setEditState((prev) =>
+                              prev ? { ...prev, title: e.target.value } : prev,
+                            )
+                          }
+                          placeholder="Task title"
+                          required
+                          autoFocus
+                          className="text-sm font-medium"
+                        />
+                        <Textarea
+                          data-ocid="task.edit.textarea"
+                          value={editState.description}
+                          onChange={(e) =>
+                            setEditState((prev) =>
+                              prev
+                                ? { ...prev, description: e.target.value }
+                                : prev,
+                            )
+                          }
+                          placeholder="Description (optional)"
+                          className="resize-none text-sm"
+                          rows={2}
+                        />
+                        <div className="flex gap-3 items-end flex-wrap">
+                          <div className="flex-1 min-w-32">
+                            <Label className="text-xs text-muted-foreground mb-1.5 block">
+                              Bucket
+                            </Label>
+                            <Select
+                              value={editState.bucketId}
+                              onValueChange={(val) =>
+                                setEditState((prev) =>
+                                  prev ? { ...prev, bucketId: val } : prev,
+                                )
+                              }
+                            >
+                              <SelectTrigger data-ocid="task.edit.select">
+                                <SelectValue placeholder="No bucket" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">
+                                  No bucket (General)
+                                </SelectItem>
+                                {buckets.map((b) => (
+                                  <SelectItem
+                                    key={b.id.toString()}
+                                    value={b.id.toString()}
+                                  >
+                                    <span className="flex items-center gap-2">
+                                      <span
+                                        className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+                                        style={{ backgroundColor: b.color }}
+                                      />
+                                      {b.name}
+                                    </span>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              type="submit"
+                              size="sm"
+                              data-ocid="task.edit.save_button"
+                              disabled={editing || !editState.title.trim()}
+                            >
+                              {editing ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Check className="w-3.5 h-3.5" />
+                              )}
+                              Save
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              data-ocid="task.edit.cancel_button"
+                              onClick={handleEditCancel}
+                              disabled={editing}
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      </form>
+                    </div>
+                  );
+                }
+
                 return (
                   <div
                     key={task.id.toString()}
@@ -497,20 +660,32 @@ export default function TasksView({ currentUserName }: Props) {
                         )}
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      data-ocid={`todo.delete_button.${idx}`}
-                      onClick={() => handleDelete(task.id)}
-                      disabled={deleting && deletingId === task.id}
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive flex-shrink-0"
-                    >
-                      {deleting && deletingId === task.id ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-3.5 h-3.5" />
-                      )}
-                    </Button>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        data-ocid={`task.edit_button.${idx}`}
+                        onClick={() => handleEditOpen(task)}
+                        disabled={editing || deleting}
+                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        data-ocid={`todo.delete_button.${idx}`}
+                        onClick={() => handleDelete(task.id)}
+                        disabled={deleting && deletingId === task.id}
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      >
+                        {deleting && deletingId === task.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3.5 h-3.5" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 );
               })}

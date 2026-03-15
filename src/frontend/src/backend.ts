@@ -89,6 +89,29 @@ export class ExternalBlob {
         return this;
     }
 }
+export type Time = bigint;
+export interface Invite {
+    status: InviteStatus;
+    token: string;
+    createdAt: Time;
+}
+export interface Task {
+    id: bigint;
+    assignee: Assignee;
+    title: string;
+    creator: Principal;
+    completed: boolean;
+    bucketId?: bigint;
+    description: string;
+    timestamp: Time;
+}
+export interface ResourceEntry {
+    id: bigint;
+    url: string;
+    categoryId: bigint;
+    password: string;
+    name: string;
+}
 export interface PrivateMessage {
     id: bigint;
     content: string;
@@ -102,7 +125,6 @@ export interface Bucket {
     createdAt: Time;
     color: string;
 }
-export type Time = bigint;
 export interface CompanyEntry {
     id: bigint;
     website_url: string;
@@ -110,24 +132,9 @@ export interface CompanyEntry {
     name: string;
     category: CompanyEntryCategory;
 }
-export interface Invite {
-    status: InviteStatus;
-    token: string;
-    createdAt: Time;
-}
 export interface Assignee {
     principal: Principal;
     name: string;
-}
-export interface Task {
-    id: bigint;
-    assignee: Assignee;
-    title: string;
-    creator: Principal;
-    completed: boolean;
-    bucketId?: bigint;
-    description: string;
-    timestamp: Time;
 }
 export interface Message {
     id: bigint;
@@ -135,6 +142,10 @@ export interface Message {
     sender: Principal;
     timestamp: Time;
     senderName: string;
+}
+export interface ResourceCategory {
+    id: bigint;
+    name: string;
 }
 export interface UserProfile {
     name: string;
@@ -159,13 +170,20 @@ export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
     addCompanyEntry(name: string, category: CompanyEntryCategory, website_url: string, password: string): Promise<void>;
     addMessage(content: string): Promise<void>;
+    addResourceEntry(categoryId: bigint, name: string, url: string, password: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     createBucket(name: string, color: string): Promise<void>;
     createInvite(): Promise<string>;
+    createResourceCategory(name: string): Promise<void>;
     createTask(title: string, description: string, assignee: Assignee, bucketId: bigint | null): Promise<void>;
     deleteBucket(id: bigint): Promise<void>;
     deleteCompanyEntry(id: bigint): Promise<void>;
+    editCompanyEntry(id: bigint, name: string, website_url: string, password: string): Promise<void>;
+    deleteResourceCategory(id: bigint): Promise<void>;
+    deleteResourceEntry(id: bigint): Promise<void>;
     deleteTask(id: bigint): Promise<void>;
+    editResourceEntry(id: bigint, name: string, url: string, password: string): Promise<void>;
+    editTask(id: bigint, title: string, description: string, bucketId: bigint | null): Promise<void>;
     getBuckets(): Promise<Array<Bucket>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
@@ -173,15 +191,20 @@ export interface backendInterface {
     getDirectMessagesWith(partner: Principal): Promise<Array<PrivateMessage>>;
     getInvites(): Promise<Array<Invite>>;
     getMessages(): Promise<Array<Message>>;
+    getResourceCategories(): Promise<Array<ResourceCategory>>;
+    getResourceEntries(): Promise<Array<ResourceEntry>>;
     getTasks(): Promise<Array<Task>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     getUserProfiles(): Promise<Array<UserProfile>>;
     isCallerAdmin(): Promise<boolean>;
+    moveTaskToResourceCategory(taskId: bigint, resourceCategoryId: bigint): Promise<void>;
     register(name: string, inviteToken: string): Promise<void>;
     renameBucket(id: bigint, newName: string): Promise<void>;
+    renameResourceCategory(id: bigint, newName: string): Promise<void>;
     revokeInvite(token: string): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     sendPrivateMessage(recipient: Principal, content: string): Promise<void>;
+    toggleTaskCompleted(taskId: bigint): Promise<void>;
     updateLastSeen(): Promise<void>;
     updateTask(id: bigint, completed: boolean): Promise<void>;
 }
@@ -230,6 +253,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async addResourceEntry(arg0: bigint, arg1: string, arg2: string, arg3: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.addResourceEntry(arg0, arg1, arg2, arg3);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.addResourceEntry(arg0, arg1, arg2, arg3);
+            return result;
+        }
+    }
     async assignCallerUserRole(arg0: Principal, arg1: UserRole): Promise<void> {
         if (this.processError) {
             try {
@@ -269,6 +306,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.createInvite();
+            return result;
+        }
+    }
+    async createResourceCategory(arg0: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.createResourceCategory(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.createResourceCategory(arg0);
             return result;
         }
     }
@@ -314,6 +365,48 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async editCompanyEntry(arg0: bigint, arg1: string, arg2: string, arg3: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.editCompanyEntry(arg0, arg1, arg2, arg3);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.editCompanyEntry(arg0, arg1, arg2, arg3);
+            return result;
+        }
+    }
+    async deleteResourceCategory(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteResourceCategory(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteResourceCategory(arg0);
+            return result;
+        }
+    }
+    async deleteResourceEntry(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteResourceEntry(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteResourceEntry(arg0);
+            return result;
+        }
+    }
     async deleteTask(arg0: bigint): Promise<void> {
         if (this.processError) {
             try {
@@ -325,6 +418,34 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.deleteTask(arg0);
+            return result;
+        }
+    }
+    async editResourceEntry(arg0: bigint, arg1: string, arg2: string, arg3: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.editResourceEntry(arg0, arg1, arg2, arg3);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.editResourceEntry(arg0, arg1, arg2, arg3);
+            return result;
+        }
+    }
+    async editTask(arg0: bigint, arg1: string, arg2: string, arg3: bigint | null): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.editTask(arg0, arg1, arg2, to_candid_opt_n5(this._uploadFile, this._downloadFile, arg3));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.editTask(arg0, arg1, arg2, to_candid_opt_n5(this._uploadFile, this._downloadFile, arg3));
             return result;
         }
     }
@@ -426,6 +547,34 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async getResourceCategories(): Promise<Array<ResourceCategory>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getResourceCategories();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getResourceCategories();
+            return result;
+        }
+    }
+    async getResourceEntries(): Promise<Array<ResourceEntry>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getResourceEntries();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getResourceEntries();
+            return result;
+        }
+    }
     async getTasks(): Promise<Array<Task>> {
         if (this.processError) {
             try {
@@ -482,6 +631,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async moveTaskToResourceCategory(arg0: bigint, arg1: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.moveTaskToResourceCategory(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.moveTaskToResourceCategory(arg0, arg1);
+            return result;
+        }
+    }
     async register(arg0: string, arg1: string): Promise<void> {
         if (this.processError) {
             try {
@@ -507,6 +670,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.renameBucket(arg0, arg1);
+            return result;
+        }
+    }
+    async renameResourceCategory(arg0: bigint, arg1: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.renameResourceCategory(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.renameResourceCategory(arg0, arg1);
             return result;
         }
     }
@@ -549,6 +726,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.sendPrivateMessage(arg0, arg1);
+            return result;
+        }
+    }
+    async toggleTaskCompleted(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.toggleTaskCompleted(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.toggleTaskCompleted(arg0);
             return result;
         }
     }

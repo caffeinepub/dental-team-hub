@@ -7,6 +7,8 @@ import type {
   Invite,
   Message,
   PrivateMessage,
+  ResourceCategory,
+  ResourceEntry,
   Task,
   UserProfile,
 } from "../backend.d";
@@ -144,6 +146,28 @@ export function useCreateTask() {
     }) => {
       if (!actor) throw new Error("Actor not available");
       await actor.createTask(title, description, assignee, bucketId ?? null);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tasks"] }),
+  });
+}
+
+export function useEditTask() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      title,
+      description,
+      bucketId,
+    }: {
+      id: bigint;
+      title: string;
+      description: string;
+      bucketId: bigint | null;
+    }) => {
+      if (!actor) throw new Error("Actor not available");
+      await actor.editTask(id, title, description, bucketId);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["tasks"] }),
   });
@@ -319,6 +343,149 @@ export function useDeleteCompanyEntry() {
       await actor.deleteCompanyEntry(id);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["companyEntries"] }),
+  });
+}
+
+export function useEditCompanyEntry() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      name,
+      website_url,
+      password,
+    }: {
+      id: bigint;
+      name: string;
+      website_url: string;
+      password: string;
+    }) => {
+      if (!actor) throw new Error("Actor not available");
+      await actor.editCompanyEntry(id, name, website_url, password);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["companyEntries"] }),
+  });
+}
+
+// Resource Categories & Entries
+
+export function useGetResourceCategories() {
+  const { actor, isFetching } = useActor();
+  return useQuery<ResourceCategory[]>({
+    queryKey: ["resourceCategories"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getResourceCategories();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useGetResourceEntries() {
+  const { actor, isFetching } = useActor();
+  return useQuery<ResourceEntry[]>({
+    queryKey: ["resourceEntries"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getResourceEntries();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useCreateResourceCategory() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (name: string) => {
+      if (!actor) throw new Error("Actor not available");
+      await actor.createResourceCategory(name);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["resourceCategories"] }),
+  });
+}
+
+export function useDeleteResourceCategory() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("Actor not available");
+      await actor.deleteResourceCategory(id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resourceCategories"] });
+      qc.invalidateQueries({ queryKey: ["resourceEntries"] });
+    },
+  });
+}
+
+export function useRenameResourceCategory() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, newName }: { id: bigint; newName: string }) => {
+      if (!actor) throw new Error("Actor not available");
+      await actor.renameResourceCategory(id, newName);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["resourceCategories"] }),
+  });
+}
+
+export function useAddResourceEntry() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      categoryId,
+      name,
+      url,
+      password,
+    }: {
+      categoryId: bigint;
+      name: string;
+      url: string;
+      password: string;
+    }) => {
+      if (!actor) throw new Error("Actor not available");
+      await actor.addResourceEntry(categoryId, name, url, password);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["resourceEntries"] }),
+  });
+}
+
+export function useDeleteResourceEntry() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("Actor not available");
+      await actor.deleteResourceEntry(id);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["resourceEntries"] }),
+  });
+}
+
+export function useEditResourceEntry() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      name,
+      url,
+      password,
+    }: {
+      id: bigint;
+      name: string;
+      url: string;
+      password: string;
+    }) => {
+      if (!actor) throw new Error("Actor not available");
+      await actor.editResourceEntry(id, name, url, password);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["resourceEntries"] }),
   });
 }
 

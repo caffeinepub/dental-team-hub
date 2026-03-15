@@ -9,8 +9,10 @@ import Principal "mo:core/Principal";
 import Text "mo:core/Text";
 import Nat "mo:core/Nat";
 import Runtime "mo:core/Runtime";
+
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
+
 
 actor {
   type Assignee = {
@@ -110,6 +112,19 @@ actor {
     password : Text;
   };
 
+  type ResourceCategory = {
+    id : Nat;
+    name : Text;
+  };
+
+  type ResourceEntry = {
+    id : Nat;
+    categoryId : Nat;
+    name : Text;
+    url : Text;
+    password : Text;
+  };
+
   let messages = List.empty<Message>();
   var nextId = 0;
   let tasks = List.empty<Task>();
@@ -120,6 +135,10 @@ actor {
   var nextBucketId = 0;
   var nextCompanyEntryId = 0;
   var companyEntries = List.empty<CompanyEntry>();
+  var nextResourceCategoryId = 0;
+  var nextResourceEntryId = 0;
+  var resourceCategories = List.empty<ResourceCategory>();
+  var resourceEntries = List.empty<ResourceEntry>();
 
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -226,9 +245,55 @@ actor {
     nextId += 1;
   };
 
+  func canModifyTask(caller : Principal, task : Task) : Bool {
+    if (AccessControl.isAdmin(accessControlState, caller)) {
+      return true;
+    };
+    if (task.creator == caller) {
+      return true;
+    };
+    if (task.assignee.principal == caller) {
+      return true;
+    };
+    false;
+  };
+
+  public shared ({ caller }) func editTask(id : Nat, title : Text, description : Text, bucketId : ?Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized");
+    };
+    let taskOpt = tasks.toArray().find(func(task) { task.id == id });
+    switch (taskOpt) {
+      case (null) { Runtime.trap("Task not found") };
+      case (?task) {
+        if (not canModifyTask(caller, task)) {
+          Runtime.trap("Unauthorized: You can only edit tasks you created or are assigned to");
+        };
+      };
+    };
+    let updated = tasks.toArray().map(
+      func(task) {
+        if (task.id == id) {
+          { task with title; description; bucketId };
+        } else { task };
+      }
+    );
+    tasks.clear();
+    for (t in updated.values()) { tasks.add(t) };
+  };
+
   public shared ({ caller }) func updateTask(id : Nat, completed : Bool) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized");
+    };
+    let taskOpt = tasks.toArray().find(func(task) { task.id == id });
+    switch (taskOpt) {
+      case (null) { Runtime.trap("Task not found") };
+      case (?task) {
+        if (not canModifyTask(caller, task)) {
+          Runtime.trap("Unauthorized: You can only update tasks you created or are assigned to");
+        };
+      };
     };
     let updated = tasks.toArray().map(
       func(task) {
@@ -242,6 +307,15 @@ actor {
   public shared ({ caller }) func deleteTask(id : Nat) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized");
+    };
+    let taskOpt = tasks.toArray().find(func(task) { task.id == id });
+    switch (taskOpt) {
+      case (null) { Runtime.trap("Task not found") };
+      case (?task) {
+        if (not canModifyTask(caller, task)) {
+          Runtime.trap("Unauthorized: You can only delete tasks you created or are assigned to");
+        };
+      };
     };
     let filtered = tasks.toArray().filter(func(task) { task.id != id });
     tasks.clear();
@@ -406,6 +480,20 @@ actor {
     companyEntries.add(entry);
   };
 
+  public shared ({ caller }) func editCompanyEntry(id : Nat, name : Text, website_url : Text, password : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can edit company entries");
+    };
+    let updated = companyEntries.toArray().map(
+      func(entry) {
+        if (entry.id == id) {
+          { entry with name; website_url; password };
+        } else { entry };
+      }
+    );
+    companyEntries := List.fromArray(updated);
+  };
+
   public shared ({ caller }) func deleteCompanyEntry(id : Nat) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized: Only admins can delete company entries");
@@ -419,5 +507,144 @@ actor {
       Runtime.trap("Unauthorized: Only authenticated users can view company entries");
     };
     companyEntries.toArray();
+  };
+
+  // Resource Category and Entry Functions
+  public shared ({ caller }) func createResourceCategory(name : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Only admins can create resource categories");
+    };
+    let category : ResourceCategory = {
+      id = nextResourceCategoryId;
+      name;
+    };
+    resourceCategories.add(category);
+    nextResourceCategoryId += 1;
+  };
+
+  public shared ({ caller }) func deleteResourceCategory(id : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Only admins can delete resource categories");
+    };
+    let filteredCategories = resourceCategories.toArray().filter(func(cat) { cat.id != id });
+    resourceCategories := List.fromArray(filteredCategories);
+
+    let filteredEntries = resourceEntries.toArray().filter(func(entry) { entry.categoryId != id });
+    resourceEntries := List.fromArray(filteredEntries);
+  };
+
+  public shared ({ caller }) func renameResourceCategory(id : Nat, newName : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Only admins can rename resource categories");
+    };
+    let updated = resourceCategories.toArray().map(
+      func(cat) {
+        if (cat.id == id) { { cat with name = newName } } else { cat };
+      }
+    );
+    resourceCategories.clear();
+    for (cat in updated.values()) { resourceCategories.add(cat) };
+  };
+
+  public shared ({ caller }) func addResourceEntry(categoryId : Nat, name : Text, url : Text, password : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Only admins can add resources");
+    };
+    switch (resourceCategories.toArray().find(func(cat) { cat.id == categoryId })) {
+      case (null) { Runtime.trap("Category does not exist") };
+      case (?_) {};
+    };
+    let entry : ResourceEntry = {
+      id = nextResourceEntryId;
+      categoryId;
+      name;
+      url;
+      password;
+    };
+    resourceEntries.add(entry);
+    nextResourceEntryId += 1;
+  };
+
+  public shared ({ caller }) func deleteResourceEntry(id : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Only admins can delete resources");
+    };
+    let filtered = resourceEntries.toArray().filter(func(entry) { entry.id != id });
+    resourceEntries := List.fromArray(filtered);
+  };
+
+  public shared ({ caller }) func editResourceEntry(id : Nat, name : Text, url : Text, password : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Only admins can update resources");
+    };
+    let updated = resourceEntries.toArray().map(
+      func(entry) {
+        if (entry.id == id) {
+          { entry with name; url; password };
+        } else { entry };
+      }
+    );
+    resourceEntries.clear();
+    for (entry in updated.values()) { resourceEntries.add(entry) };
+  };
+
+  public shared ({ caller }) func moveTaskToResourceCategory(taskId : Nat, resourceCategoryId : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Only authenticated users can move tasks");
+    };
+    switch (resourceCategories.toArray().find(func(cat) { cat.id == resourceCategoryId })) {
+      case (null) { Runtime.trap("Resource category does not exist") };
+      case (?_) {};
+    };
+    switch (tasks.toArray().find(func(task) { task.id == taskId })) {
+      case (null) { Runtime.trap("Task does not exist") };
+      case (?task) {
+        if (not canModifyTask(caller, task)) {
+          Runtime.trap("Cannot move tasks you don't own");
+        };
+        let taskUpdates = tasks.toArray().map(
+          func(t) {
+            if (t.id == taskId) { { t with completed = true } } else { t };
+          }
+        );
+        tasks.clear();
+        for (t in taskUpdates.values()) { tasks.add(t) };
+      };
+    };
+  };
+
+  public shared ({ caller }) func toggleTaskCompleted(taskId : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Only authenticated users can update tasks");
+    };
+    switch (tasks.toArray().find(func(task) { task.id == taskId })) {
+      case (null) { Runtime.trap("Task does not exist") };
+      case (?task) {
+        if (not canModifyTask(caller, task)) {
+          Runtime.trap("Cannot modify tasks you don't own");
+        };
+        let updated = tasks.toArray().map(
+          func(t) {
+            if (t.id == taskId) { { t with completed = not t.completed } } else { t };
+          }
+        );
+        tasks.clear();
+        for (t in updated.values()) { tasks.add(t) };
+      };
+    };
+  };
+
+  public query ({ caller }) func getResourceCategories() : async [ResourceCategory] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Only authenticated users can view resource categories");
+    };
+    resourceCategories.toArray();
+  };
+
+  public query ({ caller }) func getResourceEntries() : async [ResourceEntry] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Only authenticated users can view resources");
+    };
+    resourceEntries.toArray();
   };
 };

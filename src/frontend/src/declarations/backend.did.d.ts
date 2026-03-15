@@ -49,6 +49,14 @@ export interface PrivateMessage {
   'sender' : Principal,
   'timestamp' : Time,
 }
+export interface ResourceCategory { 'id' : bigint, 'name' : string }
+export interface ResourceEntry {
+  'id' : bigint,
+  'url' : string,
+  'categoryId' : bigint,
+  'password' : string,
+  'name' : string,
+}
 export interface Task {
   'id' : bigint,
   'assignee' : Assignee,
@@ -71,16 +79,25 @@ export interface _SERVICE {
     undefined
   >,
   'addMessage' : ActorMethod<[string], undefined>,
+  'addResourceEntry' : ActorMethod<[bigint, string, string, string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'createBucket' : ActorMethod<[string, string], undefined>,
   'createInvite' : ActorMethod<[], string>,
+  'createResourceCategory' : ActorMethod<[string], undefined>,
   'createTask' : ActorMethod<
     [string, string, Assignee, [] | [bigint]],
     undefined
   >,
   'deleteBucket' : ActorMethod<[bigint], undefined>,
   'deleteCompanyEntry' : ActorMethod<[bigint], undefined>,
+  'deleteResourceCategory' : ActorMethod<[bigint], undefined>,
+  'deleteResourceEntry' : ActorMethod<[bigint], undefined>,
   'deleteTask' : ActorMethod<[bigint], undefined>,
+  'editResourceEntry' : ActorMethod<
+    [bigint, string, string, string],
+    undefined
+  >,
+  'editTask' : ActorMethod<[bigint, string, string, [] | [bigint]], undefined>,
   'getBuckets' : ActorMethod<[], Array<Bucket>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
@@ -88,15 +105,20 @@ export interface _SERVICE {
   'getDirectMessagesWith' : ActorMethod<[Principal], Array<PrivateMessage>>,
   'getInvites' : ActorMethod<[], Array<Invite>>,
   'getMessages' : ActorMethod<[], Array<Message>>,
+  'getResourceCategories' : ActorMethod<[], Array<ResourceCategory>>,
+  'getResourceEntries' : ActorMethod<[], Array<ResourceEntry>>,
   'getTasks' : ActorMethod<[], Array<Task>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'getUserProfiles' : ActorMethod<[], Array<UserProfile>>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'moveTaskToResourceCategory' : ActorMethod<[bigint, bigint], undefined>,
   'register' : ActorMethod<[string, string], undefined>,
   'renameBucket' : ActorMethod<[bigint, string], undefined>,
+  'renameResourceCategory' : ActorMethod<[bigint, string], undefined>,
   'revokeInvite' : ActorMethod<[string], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'sendPrivateMessage' : ActorMethod<[Principal, string], undefined>,
+  'toggleTaskCompleted' : ActorMethod<[bigint], undefined>,
   'updateLastSeen' : ActorMethod<[], undefined>,
   'updateTask' : ActorMethod<[bigint, boolean], undefined>,
 }
