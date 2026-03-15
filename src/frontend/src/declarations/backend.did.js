@@ -8,6 +8,11 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
+export const CompanyEntryCategory = IDL.Variant({
+  'labs' : IDL.Null,
+  'insurance' : IDL.Null,
+  'dental_supply' : IDL.Null,
+});
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
@@ -25,6 +30,13 @@ export const Bucket = IDL.Record({
   'color' : IDL.Text,
 });
 export const UserProfile = IDL.Record({ 'name' : IDL.Text, 'lastSeen' : Time });
+export const CompanyEntry = IDL.Record({
+  'id' : IDL.Nat,
+  'website_url' : IDL.Text,
+  'password' : IDL.Text,
+  'name' : IDL.Text,
+  'category' : CompanyEntryCategory,
+});
 export const PrivateMessage = IDL.Record({
   'id' : IDL.Nat,
   'content' : IDL.Text,
@@ -62,6 +74,11 @@ export const Task = IDL.Record({
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+  'addCompanyEntry' : IDL.Func(
+      [IDL.Text, CompanyEntryCategory, IDL.Text, IDL.Text],
+      [],
+      [],
+    ),
   'addMessage' : IDL.Func([IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'createBucket' : IDL.Func([IDL.Text, IDL.Text], [], []),
@@ -72,10 +89,12 @@ export const idlService = IDL.Service({
       [],
     ),
   'deleteBucket' : IDL.Func([IDL.Nat], [], []),
+  'deleteCompanyEntry' : IDL.Func([IDL.Nat], [], []),
   'deleteTask' : IDL.Func([IDL.Nat], [], []),
   'getBuckets' : IDL.Func([], [IDL.Vec(Bucket)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+  'getCompanyEntries' : IDL.Func([], [IDL.Vec(CompanyEntry)], ['query']),
   'getDirectMessagesWith' : IDL.Func(
       [IDL.Principal],
       [IDL.Vec(PrivateMessage)],
@@ -93,7 +112,7 @@ export const idlService = IDL.Service({
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'register' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'renameBucket' : IDL.Func([IDL.Nat, IDL.Text], [], []),
-    'revokeInvite' : IDL.Func([IDL.Text], [], []),
+  'revokeInvite' : IDL.Func([IDL.Text], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'sendPrivateMessage' : IDL.Func([IDL.Principal, IDL.Text], [], []),
   'updateLastSeen' : IDL.Func([], [], []),
@@ -103,6 +122,11 @@ export const idlService = IDL.Service({
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
+  const CompanyEntryCategory = IDL.Variant({
+    'labs' : IDL.Null,
+    'insurance' : IDL.Null,
+    'dental_supply' : IDL.Null,
+  });
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
     'user' : IDL.Null,
@@ -120,6 +144,13 @@ export const idlFactory = ({ IDL }) => {
     'color' : IDL.Text,
   });
   const UserProfile = IDL.Record({ 'name' : IDL.Text, 'lastSeen' : Time });
+  const CompanyEntry = IDL.Record({
+    'id' : IDL.Nat,
+    'website_url' : IDL.Text,
+    'password' : IDL.Text,
+    'name' : IDL.Text,
+    'category' : CompanyEntryCategory,
+  });
   const PrivateMessage = IDL.Record({
     'id' : IDL.Nat,
     'content' : IDL.Text,
@@ -157,6 +188,11 @@ export const idlFactory = ({ IDL }) => {
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+    'addCompanyEntry' : IDL.Func(
+        [IDL.Text, CompanyEntryCategory, IDL.Text, IDL.Text],
+        [],
+        [],
+      ),
     'addMessage' : IDL.Func([IDL.Text], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'createBucket' : IDL.Func([IDL.Text, IDL.Text], [], []),
@@ -167,10 +203,12 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'deleteBucket' : IDL.Func([IDL.Nat], [], []),
+    'deleteCompanyEntry' : IDL.Func([IDL.Nat], [], []),
     'deleteTask' : IDL.Func([IDL.Nat], [], []),
     'getBuckets' : IDL.Func([], [IDL.Vec(Bucket)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+    'getCompanyEntries' : IDL.Func([], [IDL.Vec(CompanyEntry)], ['query']),
     'getDirectMessagesWith' : IDL.Func(
         [IDL.Principal],
         [IDL.Vec(PrivateMessage)],

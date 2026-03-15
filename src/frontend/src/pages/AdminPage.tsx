@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -10,10 +11,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
+  Building2,
   Check,
   Copy,
+  ExternalLink,
+  Eye,
+  EyeOff,
   Loader2,
   Pencil,
   Plus,
@@ -23,13 +29,16 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import type { Invite } from "../backend.d";
-import { InviteStatus } from "../backend.d";
+import type { CompanyEntry, Invite } from "../backend.d";
+import { CompanyEntryCategory, InviteStatus } from "../backend.d";
 import {
+  useAddCompanyEntry,
   useCreateBucket,
   useCreateInvite,
   useDeleteBucket,
+  useDeleteCompanyEntry,
   useGetBuckets,
+  useGetCompanyEntries,
   useGetInvites,
   useRenameBucket,
   useRevokeInvite,
@@ -44,6 +53,12 @@ const PRESET_COLORS = [
   { label: "Blue", value: "#3b82f6" },
   { label: "Purple", value: "#a855f7" },
   { label: "Pink", value: "#ec4899" },
+];
+
+const CATEGORY_TABS: { label: string; value: CompanyEntryCategory }[] = [
+  { label: "Labs", value: CompanyEntryCategory.labs },
+  { label: "Dental Supply", value: CompanyEntryCategory.dental_supply },
+  { label: "Insurance", value: CompanyEntryCategory.insurance },
 ];
 
 function formatDate(nanoseconds: bigint): string {
@@ -82,6 +97,292 @@ function StatusBadge({ status }: { status: InviteStatus }) {
     >
       Revoked
     </Badge>
+  );
+}
+
+function PasswordCell({ password }: { password: string }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="font-mono text-sm">
+        {visible ? password : "•".repeat(Math.min(password.length, 12))}
+      </span>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6 text-muted-foreground hover:text-foreground"
+        onClick={() => setVisible((v) => !v)}
+        aria-label={visible ? "Hide password" : "Show password"}
+      >
+        {visible ? (
+          <EyeOff className="w-3.5 h-3.5" />
+        ) : (
+          <Eye className="w-3.5 h-3.5" />
+        )}
+      </Button>
+    </div>
+  );
+}
+
+function CompanyEntryRow({
+  entry,
+  index,
+  onDelete,
+  isDeleting,
+}: {
+  entry: CompanyEntry;
+  index: number;
+  onDelete: (id: bigint) => void;
+  isDeleting: boolean;
+}) {
+  return (
+    <div
+      data-ocid={`company.item.${index}`}
+      className="flex items-center gap-3 px-4 py-3 rounded-lg border border-border bg-muted/20 hover:bg-muted/40 transition-colors"
+    >
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-sm text-foreground truncate">
+          {entry.name}
+        </p>
+        <a
+          href={entry.website_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-primary hover:underline flex items-center gap-1 mt-0.5 w-fit"
+        >
+          <ExternalLink className="w-3 h-3" />
+          {entry.website_url}
+        </a>
+      </div>
+      <div className="flex-shrink-0">
+        <PasswordCell password={entry.password} />
+      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        data-ocid={`company.delete_button.${index}`}
+        onClick={() => onDelete(entry.id)}
+        disabled={isDeleting}
+        className="h-7 w-7 text-muted-foreground hover:text-destructive flex-shrink-0"
+        aria-label={`Delete ${entry.name}`}
+      >
+        {isDeleting ? (
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        ) : (
+          <Trash2 className="w-3.5 h-3.5" />
+        )}
+      </Button>
+    </div>
+  );
+}
+
+function AddCompanyForm({ category }: { category: CompanyEntryCategory }) {
+  const { mutate: addEntry, isPending } = useAddCompanyEntry();
+  const [name, setName] = useState("");
+  const [url, setUrl] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !url.trim()) return;
+    addEntry(
+      {
+        name: name.trim(),
+        category,
+        website_url: url.trim(),
+        password: password,
+      },
+      {
+        onSuccess: () => {
+          setName("");
+          setUrl("");
+          setPassword("");
+          toast.success("Entry added successfully");
+        },
+        onError: () => toast.error("Failed to add entry"),
+      },
+    );
+  };
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="pt-4 border-t border-border space-y-3"
+    >
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+        Add New Entry
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="space-y-1">
+          <Label htmlFor={`company-name-${category}`} className="text-xs">
+            Company Name
+          </Label>
+          <Input
+            id={`company-name-${category}`}
+            data-ocid="company.input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. BioHorizons"
+            className="h-8 text-sm"
+            required
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`company-url-${category}`} className="text-xs">
+            Website URL
+          </Label>
+          <Input
+            id={`company-url-${category}`}
+            data-ocid="company.input"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://example.com"
+            className="h-8 text-sm"
+            type="url"
+            required
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`company-pw-${category}`} className="text-xs">
+            Password
+          </Label>
+          <div className="relative">
+            <Input
+              id={`company-pw-${category}`}
+              data-ocid="company.input"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+              type={showPw ? "text" : "password"}
+              className="h-8 text-sm pr-8"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="absolute right-0 top-0 h-8 w-8 text-muted-foreground hover:text-foreground"
+              onClick={() => setShowPw((v) => !v)}
+              aria-label={showPw ? "Hide password" : "Show password"}
+            >
+              {showPw ? (
+                <EyeOff className="w-3.5 h-3.5" />
+              ) : (
+                <Eye className="w-3.5 h-3.5" />
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+      <Button
+        type="submit"
+        data-ocid="company.submit_button"
+        disabled={isPending || !name.trim() || !url.trim()}
+        size="sm"
+        className="h-8"
+      >
+        {isPending ? (
+          <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+        ) : (
+          <Plus className="w-3.5 h-3.5 mr-1.5" />
+        )}
+        Add Entry
+      </Button>
+    </form>
+  );
+}
+
+function CompanyDirectorySection() {
+  const { data: entries = [], isLoading } = useGetCompanyEntries();
+  const {
+    mutate: deleteEntry,
+    isPending: isDeleting,
+    variables: deletingId,
+  } = useDeleteCompanyEntry();
+
+  const handleDelete = (id: bigint) => {
+    deleteEntry(id, {
+      onSuccess: () => toast.success("Entry deleted"),
+      onError: () => toast.error("Failed to delete entry"),
+    });
+  };
+
+  const entriesByCategory = (cat: CompanyEntryCategory) =>
+    entries.filter((e) => e.category === cat);
+
+  return (
+    <section
+      data-ocid="company.section"
+      className="bg-card border border-border rounded-xl overflow-hidden"
+    >
+      <div className="px-6 py-4 border-b border-border flex items-center gap-3">
+        <Building2 className="w-4 h-4 text-muted-foreground" />
+        <div>
+          <h2 className="font-semibold text-foreground">Company Directory</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Save links and credentials for labs, suppliers, and insurance
+            companies.
+          </p>
+        </div>
+      </div>
+
+      <div className="p-6">
+        {isLoading ? (
+          <div data-ocid="company.loading_state" className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-14 w-full rounded-lg" />
+            ))}
+          </div>
+        ) : (
+          <Tabs defaultValue={CompanyEntryCategory.labs}>
+            <TabsList className="mb-4">
+              {CATEGORY_TABS.map((tab) => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  data-ocid={`company.${tab.value}.tab`}
+                >
+                  {tab.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            {CATEGORY_TABS.map((tab) => {
+              const categoryEntries = entriesByCategory(tab.value);
+              return (
+                <TabsContent
+                  key={tab.value}
+                  value={tab.value}
+                  className="space-y-3"
+                >
+                  {categoryEntries.length === 0 ? (
+                    <div
+                      data-ocid="company.empty_state"
+                      className="text-center py-8 text-sm text-muted-foreground"
+                    >
+                      No {tab.label.toLowerCase()} entries yet. Add one below.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {categoryEntries.map((entry, i) => (
+                        <CompanyEntryRow
+                          key={entry.id.toString()}
+                          entry={entry}
+                          index={i + 1}
+                          onDelete={handleDelete}
+                          isDeleting={isDeleting && deletingId === entry.id}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  <AddCompanyForm category={tab.value} />
+                </TabsContent>
+              );
+            })}
+          </Tabs>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -216,7 +517,7 @@ export default function AdminPage() {
             Admin
           </h1>
           <p className="text-xs text-muted-foreground">
-            Manage team invitations and task buckets
+            Manage team invitations, task buckets, and company directory
           </p>
         </div>
       </div>
@@ -440,6 +741,9 @@ export default function AdminPage() {
             </form>
           </div>
         </section>
+
+        {/* Company Directory */}
+        <CompanyDirectorySection />
 
         {/* Invites table */}
         <section className="bg-card border border-border rounded-xl overflow-hidden">

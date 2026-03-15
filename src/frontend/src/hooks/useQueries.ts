@@ -3,12 +3,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   Assignee,
   Bucket,
+  CompanyEntry,
   Invite,
   Message,
   PrivateMessage,
   Task,
   UserProfile,
 } from "../backend.d";
+import { CompanyEntryCategory } from "../backend.d";
 import { useActor } from "./useActor";
 
 export function useGetCallerUserProfile() {
@@ -273,3 +275,51 @@ export function useIsCallerAdmin() {
     enabled: !!actor && !isFetching,
   });
 }
+
+export function useGetCompanyEntries() {
+  const { actor, isFetching } = useActor();
+  return useQuery<CompanyEntry[]>({
+    queryKey: ["companyEntries"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getCompanyEntries();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useAddCompanyEntry() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      name,
+      category,
+      website_url,
+      password,
+    }: {
+      name: string;
+      category: CompanyEntryCategory;
+      website_url: string;
+      password: string;
+    }) => {
+      if (!actor) throw new Error("Actor not available");
+      await actor.addCompanyEntry(name, category, website_url, password);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["companyEntries"] }),
+  });
+}
+
+export function useDeleteCompanyEntry() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("Actor not available");
+      await actor.deleteCompanyEntry(id);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["companyEntries"] }),
+  });
+}
+
+export { CompanyEntryCategory };

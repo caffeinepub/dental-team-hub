@@ -96,6 +96,20 @@ actor {
     createdAt : Time.Time;
   };
 
+  type CompanyEntryCategory = {
+    #labs;
+    #dental_supply;
+    #insurance;
+  };
+
+  type CompanyEntry = {
+    id : Nat;
+    name : Text;
+    category : CompanyEntryCategory;
+    website_url : Text;
+    password : Text;
+  };
+
   let messages = List.empty<Message>();
   var nextId = 0;
   let tasks = List.empty<Task>();
@@ -104,6 +118,8 @@ actor {
   let invites = List.empty<Invite>();
   let buckets = List.empty<Bucket>();
   var nextBucketId = 0;
+  var nextCompanyEntryId = 0;
+  var companyEntries = List.empty<CompanyEntry>();
 
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -372,5 +388,36 @@ actor {
       };
       case (null) { Runtime.trap("Invalid invite token") };
     };
+  };
+
+  // CompanyEntry CRUD (Admin Only)
+  public shared ({ caller }) func addCompanyEntry(name : Text, category : CompanyEntryCategory, website_url : Text, password : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can add company entries");
+    };
+    let entry : CompanyEntry = {
+      id = nextCompanyEntryId;
+      name;
+      category;
+      website_url;
+      password;
+    };
+    nextCompanyEntryId += 1;
+    companyEntries.add(entry);
+  };
+
+  public shared ({ caller }) func deleteCompanyEntry(id : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can delete company entries");
+    };
+    let filtered = companyEntries.toArray().filter(func(entry) { entry.id != id });
+    companyEntries := List.fromArray(filtered);
+  };
+
+  public query ({ caller }) func getCompanyEntries() : async [CompanyEntry] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can view company entries");
+    };
+    companyEntries.toArray();
   };
 };

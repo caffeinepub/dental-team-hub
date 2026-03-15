@@ -21,6 +21,13 @@ export interface Bucket {
     color: string;
 }
 export type Time = bigint;
+export interface CompanyEntry {
+    id: bigint;
+    website_url: string;
+    password: string;
+    name: string;
+    category: CompanyEntryCategory;
+}
 export interface Invite {
     status: InviteStatus;
     token: string;
@@ -51,6 +58,11 @@ export interface UserProfile {
     name: string;
     lastSeen: Time;
 }
+export enum CompanyEntryCategory {
+    labs = "labs",
+    insurance = "insurance",
+    dental_supply = "dental_supply"
+}
 export enum InviteStatus {
     active = "active",
     revoked = "revoked",
@@ -62,16 +74,19 @@ export enum UserRole {
     guest = "guest"
 }
 export interface backendInterface {
+    addCompanyEntry(name: string, category: CompanyEntryCategory, website_url: string, password: string): Promise<void>;
     addMessage(content: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     createBucket(name: string, color: string): Promise<void>;
     createInvite(): Promise<string>;
     createTask(title: string, description: string, assignee: Assignee, bucketId: bigint | null): Promise<void>;
     deleteBucket(id: bigint): Promise<void>;
+    deleteCompanyEntry(id: bigint): Promise<void>;
     deleteTask(id: bigint): Promise<void>;
     getBuckets(): Promise<Array<Bucket>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
+    getCompanyEntries(): Promise<Array<CompanyEntry>>;
     getDirectMessagesWith(partner: Principal): Promise<Array<PrivateMessage>>;
     getInvites(): Promise<Array<Invite>>;
     getMessages(): Promise<Array<Message>>;

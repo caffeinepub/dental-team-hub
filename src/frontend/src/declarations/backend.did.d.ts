@@ -17,6 +17,16 @@ export interface Bucket {
   'createdAt' : Time,
   'color' : string,
 }
+export interface CompanyEntry {
+  'id' : bigint,
+  'website_url' : string,
+  'password' : string,
+  'name' : string,
+  'category' : CompanyEntryCategory,
+}
+export type CompanyEntryCategory = { 'labs' : null } |
+  { 'insurance' : null } |
+  { 'dental_supply' : null };
 export interface Invite {
   'status' : InviteStatus,
   'token' : string,
@@ -56,6 +66,10 @@ export type UserRole = { 'admin' : null } |
   { 'guest' : null };
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'addCompanyEntry' : ActorMethod<
+    [string, CompanyEntryCategory, string, string],
+    undefined
+  >,
   'addMessage' : ActorMethod<[string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'createBucket' : ActorMethod<[string, string], undefined>,
@@ -65,10 +79,12 @@ export interface _SERVICE {
     undefined
   >,
   'deleteBucket' : ActorMethod<[bigint], undefined>,
+  'deleteCompanyEntry' : ActorMethod<[bigint], undefined>,
   'deleteTask' : ActorMethod<[bigint], undefined>,
   'getBuckets' : ActorMethod<[], Array<Bucket>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getCompanyEntries' : ActorMethod<[], Array<CompanyEntry>>,
   'getDirectMessagesWith' : ActorMethod<[Principal], Array<PrivateMessage>>,
   'getInvites' : ActorMethod<[], Array<Invite>>,
   'getMessages' : ActorMethod<[], Array<Message>>,
