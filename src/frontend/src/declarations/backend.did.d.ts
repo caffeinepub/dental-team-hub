@@ -20,6 +20,7 @@ export interface Bucket {
 export interface CompanyEntry {
   'id' : bigint,
   'website_url' : string,
+  'username' : string,
   'password' : string,
   'name' : string,
   'category' : CompanyEntryCategory,
@@ -54,6 +55,7 @@ export interface ResourceEntry {
   'id' : bigint,
   'url' : string,
   'categoryId' : bigint,
+  'username' : string,
   'password' : string,
   'name' : string,
 }
@@ -75,11 +77,14 @@ export type UserRole = { 'admin' : null } |
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'addCompanyEntry' : ActorMethod<
-    [string, CompanyEntryCategory, string, string],
+    [string, CompanyEntryCategory, string, string, string],
     undefined
   >,
   'addMessage' : ActorMethod<[string], undefined>,
-  'addResourceEntry' : ActorMethod<[bigint, string, string, string], undefined>,
+  'addResourceEntry' : ActorMethod<
+    [bigint, string, string, string, string],
+    undefined
+  >,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'createBucket' : ActorMethod<[string, string], undefined>,
   'createInvite' : ActorMethod<[], string>,
@@ -93,8 +98,12 @@ export interface _SERVICE {
   'deleteResourceCategory' : ActorMethod<[bigint], undefined>,
   'deleteResourceEntry' : ActorMethod<[bigint], undefined>,
   'deleteTask' : ActorMethod<[bigint], undefined>,
+  'editCompanyEntry' : ActorMethod<
+    [bigint, string, string, string, string],
+    undefined
+  >,
   'editResourceEntry' : ActorMethod<
-    [bigint, string, string, string],
+    [bigint, string, string, string, string],
     undefined
   >,
   'editTask' : ActorMethod<[bigint, string, string, [] | [bigint]], undefined>,

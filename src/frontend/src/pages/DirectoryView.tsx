@@ -38,11 +38,14 @@ export default function DirectoryView() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Header */}
-      <div className="flex-shrink-0 px-6 py-4 border-b border-border bg-card">
-        <h2 className="text-lg font-semibold text-foreground">
-          Team Directory
-        </h2>
+      {/* Header — teal accent */}
+      <div className="flex-shrink-0 px-6 py-4 border-b border-teal-100 bg-teal-50/60 border-l-4 border-l-teal-500">
+        <div className="flex items-center gap-2">
+          <Users className="w-4 h-4 text-teal-600" />
+          <h2 className="text-lg font-semibold text-foreground">
+            Team Directory
+          </h2>
+        </div>
         <p className="text-xs text-muted-foreground mt-0.5">
           {profiles
             ? `${profiles.length} team member${profiles.length !== 1 ? "s" : ""}`
@@ -96,11 +99,11 @@ export default function DirectoryView() {
                 <div
                   key={profile.name}
                   data-ocid={`directory.item.${idx + 1}`}
-                  className="bg-card border border-border rounded-xl p-4 shadow-xs flex items-center gap-4"
+                  className="bg-card border border-teal-100 rounded-xl p-4 shadow-xs flex items-center gap-4 hover:border-teal-200 transition-colors"
                 >
                   <div className="relative flex-shrink-0">
-                    <div className="w-12 h-12 rounded-full bg-primary/15 flex items-center justify-center">
-                      <span className="text-sm font-semibold text-primary">
+                    <div className="w-12 h-12 rounded-full bg-teal-500/15 flex items-center justify-center">
+                      <span className="text-sm font-semibold text-teal-600">
                         {getInitials(profile.name)}
                       </span>
                     </div>
@@ -119,7 +122,7 @@ export default function DirectoryView() {
                         {profile.name}
                       </p>
                       {isCurrentUser && (
-                        <span className="text-[10px] bg-primary/10 text-primary rounded-full px-1.5 py-0.5 font-medium">
+                        <span className="text-[10px] bg-teal-500/10 text-teal-600 rounded-full px-1.5 py-0.5 font-medium">
                           You
                         </span>
                       )}
@@ -139,7 +142,7 @@ export default function DirectoryView() {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleMessage(profile.name)}
-                      className="h-8 w-8 text-muted-foreground hover:text-primary flex-shrink-0"
+                      className="h-8 w-8 text-muted-foreground hover:text-teal-600 flex-shrink-0"
                       title={`Message ${profile.name}`}
                     >
                       <MessageSquare className="w-4 h-4" />

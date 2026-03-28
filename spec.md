@@ -1,22 +1,23 @@
 # Dental Team Hub
 
 ## Current State
-The Company Directory on the Admin page supports adding and deleting entries (Labs, Dental Supply, Insurance tabs). There is no way to edit an existing entry's name, URL, or password.
+Invite system uses long random URL tokens embedded in links.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Backend: `editCompanyEntry(id, name, website_url, password)` function (admin-only)
-- Frontend: Inline edit mode on each `CompanyEntryRow` — pencil icon opens editable fields for name, URL, and password; Save/Cancel controls confirm or discard changes
-- Frontend: `useEditCompanyEntry` hook in useQueries.ts
+- Short 6-digit numeric PIN generation in backend createInvite
+- Admin sees PIN directly in invite list
 
 ### Modify
-- `CompanyEntryRow` component: add edit state and editing UI (matching the pattern used by `ResourceEntryRow`)
+- Backend: createInvite generates 6-digit numeric PIN
+- Admin page: Show PIN value directly with copy button
+- Register page: PIN input form after Internet Identity login
 
 ### Remove
-- Nothing
+- URL-based invite token flow
 
 ## Implementation Plan
-1. Add `editCompanyEntry` to main.mo (admin-only, updates name/website_url/password by id)
-2. Add `useEditCompanyEntry` mutation hook to useQueries.ts
-3. Update `CompanyEntryRow` in AdminPage.tsx to support inline editing with pencil/save/cancel controls
+1. Backend: Change createInvite to generate 6-digit numeric PIN
+2. Admin page: Show PIN in invite row, copy PIN button
+3. Register page: Simple PIN input instead of URL token

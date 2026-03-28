@@ -10,9 +10,11 @@ import Text "mo:core/Text";
 import Nat "mo:core/Nat";
 import Runtime "mo:core/Runtime";
 
+
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
+// Specify the data migration function in with-clause
 
 actor {
   type Assignee = {
@@ -109,6 +111,7 @@ actor {
     name : Text;
     category : CompanyEntryCategory;
     website_url : Text;
+    username : Text;
     password : Text;
   };
 
@@ -122,6 +125,7 @@ actor {
     categoryId : Nat;
     name : Text;
     url : Text;
+    username : Text;
     password : Text;
   };
 
@@ -153,6 +157,9 @@ actor {
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized");
+    };
+    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Can only view your own profile");
     };
     userProfiles.get(user);
   };
@@ -391,26 +398,11 @@ actor {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized: Only admins can create invites");
     };
-    let allCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    let charArray = allCharacters.toArray();
-    let charArrayLength = charArray.size();
-    func generateToken(attempt : Nat) : Text {
-      let chars = Array.tabulate(
-        8,
-        func(i) {
-          let index = ((Int.abs(Time.now()) + i + attempt) % charArrayLength : Int).toNat();
-          charArray[index];
-        },
-      );
-      chars.toText();
-    };
-    var token : Text = "";
-    var attempt = 0;
-    while (token == "" and attempt < 200) {
-      token := generateToken(attempt);
-      attempt += 1;
-    };
-    if (token == "") { Runtime.trap("Failed to generate token") };
+    let digits = "0123456789";
+    let digitArray = digits.toArray();
+    let seed = Int.abs(Time.now());
+    let pin = Array.tabulate(6, func(i) { digitArray[(seed / (10 ** i) % 10 : Int).toNat()] });
+    let token = pin.toText();
     let invite : Invite = { token; status = #active; createdAt = Time.now() };
     invites.add(invite);
     token;
@@ -465,7 +457,7 @@ actor {
   };
 
   // CompanyEntry CRUD (Admin Only)
-  public shared ({ caller }) func addCompanyEntry(name : Text, category : CompanyEntryCategory, website_url : Text, password : Text) : async () {
+  public shared ({ caller }) func addCompanyEntry(name : Text, category : CompanyEntryCategory, website_url : Text, username : Text, password : Text) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized: Only admins can add company entries");
     };
@@ -474,20 +466,21 @@ actor {
       name;
       category;
       website_url;
+      username;
       password;
     };
     nextCompanyEntryId += 1;
     companyEntries.add(entry);
   };
 
-  public shared ({ caller }) func editCompanyEntry(id : Nat, name : Text, website_url : Text, password : Text) : async () {
+  public shared ({ caller }) func editCompanyEntry(id : Nat, name : Text, website_url : Text, username : Text, password : Text) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized: Only admins can edit company entries");
     };
     let updated = companyEntries.toArray().map(
       func(entry) {
         if (entry.id == id) {
-          { entry with name; website_url; password };
+          { entry with name; website_url; username; password };
         } else { entry };
       }
     );
@@ -546,7 +539,7 @@ actor {
     for (cat in updated.values()) { resourceCategories.add(cat) };
   };
 
-  public shared ({ caller }) func addResourceEntry(categoryId : Nat, name : Text, url : Text, password : Text) : async () {
+  public shared ({ caller }) func addResourceEntry(categoryId : Nat, name : Text, url : Text, username : Text, password : Text) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Only admins can add resources");
     };
@@ -559,6 +552,7 @@ actor {
       categoryId;
       name;
       url;
+      username;
       password;
     };
     resourceEntries.add(entry);
@@ -573,14 +567,14 @@ actor {
     resourceEntries := List.fromArray(filtered);
   };
 
-  public shared ({ caller }) func editResourceEntry(id : Nat, name : Text, url : Text, password : Text) : async () {
+  public shared ({ caller }) func editResourceEntry(id : Nat, name : Text, url : Text, username : Text, password : Text) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Only admins can update resources");
     };
     let updated = resourceEntries.toArray().map(
       func(entry) {
         if (entry.id == id) {
-          { entry with name; url; password };
+          { entry with name; url; username; password };
         } else { entry };
       }
     );

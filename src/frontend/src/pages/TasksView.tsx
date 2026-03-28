@@ -225,10 +225,10 @@ export default function TasksView({ currentUserName }: Props) {
   return (
     <div className="flex h-full overflow-hidden">
       {/* ── Left Bucket Panel ── */}
-      <aside className="w-60 flex-shrink-0 border-r border-border bg-card flex flex-col">
+      <aside className="w-60 flex-shrink-0 border-r border-violet-100 bg-violet-50/30 flex flex-col">
         {/* Panel header */}
-        <div className="px-4 pt-5 pb-3 flex-shrink-0">
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        <div className="px-4 pt-5 pb-3 flex-shrink-0 border-b border-violet-100">
+          <h2 className="text-xs font-semibold text-violet-600 uppercase tracking-wider">
             Buckets
           </h2>
         </div>
@@ -332,7 +332,7 @@ export default function TasksView({ currentUserName }: Props) {
       {/* ── Right Tasks Panel ── */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Right panel header */}
-        <div className="flex-shrink-0 px-6 py-4 border-b border-border bg-card">
+        <div className="flex-shrink-0 px-6 py-4 border-b border-violet-100 bg-violet-50/40 border-l-4 border-l-violet-500">
           <div className="flex items-center gap-2">
             <span
               className="w-3 h-3 rounded-full flex-shrink-0"

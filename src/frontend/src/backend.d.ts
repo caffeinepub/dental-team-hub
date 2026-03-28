@@ -27,6 +27,7 @@ export interface ResourceEntry {
     id: bigint;
     url: string;
     categoryId: bigint;
+    username: string;
     password: string;
     name: string;
 }
@@ -46,6 +47,7 @@ export interface Bucket {
 export interface CompanyEntry {
     id: bigint;
     website_url: string;
+    username: string;
     password: string;
     name: string;
     category: CompanyEntryCategory;
@@ -85,9 +87,9 @@ export enum UserRole {
     guest = "guest"
 }
 export interface backendInterface {
-    addCompanyEntry(name: string, category: CompanyEntryCategory, website_url: string, password: string): Promise<void>;
+    addCompanyEntry(name: string, category: CompanyEntryCategory, website_url: string, username: string, password: string): Promise<void>;
     addMessage(content: string): Promise<void>;
-    addResourceEntry(categoryId: bigint, name: string, url: string, password: string): Promise<void>;
+    addResourceEntry(categoryId: bigint, name: string, url: string, username: string, password: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     createBucket(name: string, color: string): Promise<void>;
     createInvite(): Promise<string>;
@@ -95,11 +97,11 @@ export interface backendInterface {
     createTask(title: string, description: string, assignee: Assignee, bucketId: bigint | null): Promise<void>;
     deleteBucket(id: bigint): Promise<void>;
     deleteCompanyEntry(id: bigint): Promise<void>;
-    editCompanyEntry(id: bigint, name: string, website_url: string, password: string): Promise<void>;
     deleteResourceCategory(id: bigint): Promise<void>;
     deleteResourceEntry(id: bigint): Promise<void>;
     deleteTask(id: bigint): Promise<void>;
-    editResourceEntry(id: bigint, name: string, url: string, password: string): Promise<void>;
+    editCompanyEntry(id: bigint, name: string, website_url: string, username: string, password: string): Promise<void>;
+    editResourceEntry(id: bigint, name: string, url: string, username: string, password: string): Promise<void>;
     editTask(id: bigint, title: string, description: string, bucketId: bigint | null): Promise<void>;
     getBuckets(): Promise<Array<Bucket>>;
     getCallerUserProfile(): Promise<UserProfile | null>;

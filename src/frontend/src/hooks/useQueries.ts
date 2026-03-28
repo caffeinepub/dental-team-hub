@@ -320,15 +320,23 @@ export function useAddCompanyEntry() {
       name,
       category,
       website_url,
+      username,
       password,
     }: {
       name: string;
       category: CompanyEntryCategory;
       website_url: string;
+      username: string;
       password: string;
     }) => {
       if (!actor) throw new Error("Actor not available");
-      await actor.addCompanyEntry(name, category, website_url, password);
+      await actor.addCompanyEntry(
+        name,
+        category,
+        website_url,
+        username,
+        password,
+      );
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["companyEntries"] }),
   });
@@ -354,15 +362,17 @@ export function useEditCompanyEntry() {
       id,
       name,
       website_url,
+      username,
       password,
     }: {
       id: bigint;
       name: string;
       website_url: string;
+      username: string;
       password: string;
     }) => {
       if (!actor) throw new Error("Actor not available");
-      await actor.editCompanyEntry(id, name, website_url, password);
+      await actor.editCompanyEntry(id, name, website_url, username, password);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["companyEntries"] }),
   });
@@ -441,15 +451,17 @@ export function useAddResourceEntry() {
       categoryId,
       name,
       url,
+      username,
       password,
     }: {
       categoryId: bigint;
       name: string;
       url: string;
+      username: string;
       password: string;
     }) => {
       if (!actor) throw new Error("Actor not available");
-      await actor.addResourceEntry(categoryId, name, url, password);
+      await actor.addResourceEntry(categoryId, name, url, username, password);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["resourceEntries"] }),
   });
@@ -475,15 +487,17 @@ export function useEditResourceEntry() {
       id,
       name,
       url,
+      username,
       password,
     }: {
       id: bigint;
       name: string;
       url: string;
+      username: string;
       password: string;
     }) => {
       if (!actor) throw new Error("Actor not available");
-      await actor.editResourceEntry(id, name, url, password);
+      await actor.editResourceEntry(id, name, url, username, password);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["resourceEntries"] }),
   });

@@ -109,6 +109,7 @@ export interface ResourceEntry {
     id: bigint;
     url: string;
     categoryId: bigint;
+    username: string;
     password: string;
     name: string;
 }
@@ -128,6 +129,7 @@ export interface Bucket {
 export interface CompanyEntry {
     id: bigint;
     website_url: string;
+    username: string;
     password: string;
     name: string;
     category: CompanyEntryCategory;
@@ -168,9 +170,9 @@ export enum UserRole {
 }
 export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
-    addCompanyEntry(name: string, category: CompanyEntryCategory, website_url: string, password: string): Promise<void>;
+    addCompanyEntry(name: string, category: CompanyEntryCategory, website_url: string, username: string, password: string): Promise<void>;
     addMessage(content: string): Promise<void>;
-    addResourceEntry(categoryId: bigint, name: string, url: string, password: string): Promise<void>;
+    addResourceEntry(categoryId: bigint, name: string, url: string, username: string, password: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     createBucket(name: string, color: string): Promise<void>;
     createInvite(): Promise<string>;
@@ -178,11 +180,11 @@ export interface backendInterface {
     createTask(title: string, description: string, assignee: Assignee, bucketId: bigint | null): Promise<void>;
     deleteBucket(id: bigint): Promise<void>;
     deleteCompanyEntry(id: bigint): Promise<void>;
-    editCompanyEntry(id: bigint, name: string, website_url: string, password: string): Promise<void>;
     deleteResourceCategory(id: bigint): Promise<void>;
     deleteResourceEntry(id: bigint): Promise<void>;
     deleteTask(id: bigint): Promise<void>;
-    editResourceEntry(id: bigint, name: string, url: string, password: string): Promise<void>;
+    editCompanyEntry(id: bigint, name: string, website_url: string, username: string, password: string): Promise<void>;
+    editResourceEntry(id: bigint, name: string, url: string, username: string, password: string): Promise<void>;
     editTask(id: bigint, title: string, description: string, bucketId: bigint | null): Promise<void>;
     getBuckets(): Promise<Array<Bucket>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
@@ -225,17 +227,17 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async addCompanyEntry(arg0: string, arg1: CompanyEntryCategory, arg2: string, arg3: string): Promise<void> {
+    async addCompanyEntry(arg0: string, arg1: CompanyEntryCategory, arg2: string, arg3: string, arg4: string): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.addCompanyEntry(arg0, to_candid_CompanyEntryCategory_n1(this._uploadFile, this._downloadFile, arg1), arg2, arg3);
+                const result = await this.actor.addCompanyEntry(arg0, to_candid_CompanyEntryCategory_n1(this._uploadFile, this._downloadFile, arg1), arg2, arg3, arg4);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.addCompanyEntry(arg0, to_candid_CompanyEntryCategory_n1(this._uploadFile, this._downloadFile, arg1), arg2, arg3);
+            const result = await this.actor.addCompanyEntry(arg0, to_candid_CompanyEntryCategory_n1(this._uploadFile, this._downloadFile, arg1), arg2, arg3, arg4);
             return result;
         }
     }
@@ -253,17 +255,17 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async addResourceEntry(arg0: bigint, arg1: string, arg2: string, arg3: string): Promise<void> {
+    async addResourceEntry(arg0: bigint, arg1: string, arg2: string, arg3: string, arg4: string): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.addResourceEntry(arg0, arg1, arg2, arg3);
+                const result = await this.actor.addResourceEntry(arg0, arg1, arg2, arg3, arg4);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.addResourceEntry(arg0, arg1, arg2, arg3);
+            const result = await this.actor.addResourceEntry(arg0, arg1, arg2, arg3, arg4);
             return result;
         }
     }
@@ -365,20 +367,6 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async editCompanyEntry(arg0: bigint, arg1: string, arg2: string, arg3: string): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.editCompanyEntry(arg0, arg1, arg2, arg3);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.editCompanyEntry(arg0, arg1, arg2, arg3);
-            return result;
-        }
-    }
     async deleteResourceCategory(arg0: bigint): Promise<void> {
         if (this.processError) {
             try {
@@ -421,17 +409,31 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async editResourceEntry(arg0: bigint, arg1: string, arg2: string, arg3: string): Promise<void> {
+    async editCompanyEntry(arg0: bigint, arg1: string, arg2: string, arg3: string, arg4: string): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.editResourceEntry(arg0, arg1, arg2, arg3);
+                const result = await this.actor.editCompanyEntry(arg0, arg1, arg2, arg3, arg4);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.editResourceEntry(arg0, arg1, arg2, arg3);
+            const result = await this.actor.editCompanyEntry(arg0, arg1, arg2, arg3, arg4);
+            return result;
+        }
+    }
+    async editResourceEntry(arg0: bigint, arg1: string, arg2: string, arg3: string, arg4: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.editResourceEntry(arg0, arg1, arg2, arg3, arg4);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.editResourceEntry(arg0, arg1, arg2, arg3, arg4);
             return result;
         }
     }
@@ -799,12 +801,14 @@ function from_candid_opt_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Ar
 function from_candid_record_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     id: bigint;
     website_url: string;
+    username: string;
     password: string;
     name: string;
     category: _CompanyEntryCategory;
 }): {
     id: bigint;
     website_url: string;
+    username: string;
     password: string;
     name: string;
     category: CompanyEntryCategory;
@@ -812,6 +816,7 @@ function from_candid_record_n11(_uploadFile: (file: ExternalBlob) => Promise<Uin
     return {
         id: value.id,
         website_url: value.website_url,
+        username: value.username,
         password: value.password,
         name: value.name,
         category: from_candid_CompanyEntryCategory_n12(_uploadFile, _downloadFile, value.category)

@@ -24,10 +24,12 @@ import {
   EyeOff,
   Link2,
   Loader2,
+  Lock,
   Pencil,
   Plus,
   ShieldCheck,
   Trash2,
+  User,
   X,
 } from "lucide-react";
 import { useState } from "react";
@@ -89,6 +91,15 @@ function formatDate(nanoseconds: bigint): string {
   });
 }
 
+function AdminOnlyBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">
+      <Lock className="w-2.5 h-2.5" />
+      Admin Only
+    </span>
+  );
+}
+
 function StatusBadge({ status }: { status: InviteStatus }) {
   if (status === InviteStatus.active) {
     return (
@@ -122,7 +133,7 @@ function PasswordCell({ password }: { password: string }) {
   return (
     <div className="flex items-center gap-1.5">
       <span className="font-mono text-sm">
-        {visible ? password : "•".repeat(Math.min(password.length, 12))}
+        {visible ? password : "\u2022".repeat(Math.min(password.length, 12))}
       </span>
       <Button
         variant="ghost"
@@ -156,6 +167,7 @@ function CompanyEntryRow({
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(entry.name);
   const [editUrl, setEditUrl] = useState(entry.website_url);
+  const [editUserId, setEditUserId] = useState(entry.username ?? "");
   const [editPassword, setEditPassword] = useState(entry.password);
   const [showEditPw, setShowEditPw] = useState(false);
 
@@ -166,6 +178,7 @@ function CompanyEntryRow({
         id: entry.id,
         name: editName.trim(),
         website_url: editUrl.trim(),
+        username: editUserId,
         password: editPassword,
       },
       {
@@ -182,6 +195,7 @@ function CompanyEntryRow({
     setEditing(false);
     setEditName(entry.name);
     setEditUrl(entry.website_url);
+    setEditUserId(entry.username ?? "");
     setEditPassword(entry.password);
   };
 
@@ -189,9 +203,9 @@ function CompanyEntryRow({
     return (
       <div
         data-ocid={`company.item.${index}`}
-        className="flex flex-col gap-2 px-4 py-3 rounded-lg border border-primary/30 bg-primary/5"
+        className="flex flex-col gap-2 px-4 py-3 rounded-lg border border-amber-200 bg-amber-50/50"
       >
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
           <Input
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
@@ -205,6 +219,12 @@ function CompanyEntryRow({
             placeholder="https://example.com"
             className="h-8 text-sm"
             type="url"
+          />
+          <Input
+            value={editUserId}
+            onChange={(e) => setEditUserId(e.target.value)}
+            placeholder="User ID"
+            className="h-8 text-sm"
           />
           <div className="relative">
             <Input
@@ -233,7 +253,7 @@ function CompanyEntryRow({
         <div className="flex gap-2">
           <Button
             size="sm"
-            className="h-7"
+            className="h-7 bg-amber-600 hover:bg-amber-700 text-white"
             data-ocid={`company.save_button.${index}`}
             onClick={handleSave}
             disabled={isSaving || !editName.trim() || !editUrl.trim()}
@@ -263,7 +283,7 @@ function CompanyEntryRow({
   return (
     <div
       data-ocid={`company.item.${index}`}
-      className="flex items-center gap-3 px-4 py-3 rounded-lg border border-border bg-muted/20 hover:bg-muted/40 transition-colors"
+      className="flex items-center gap-3 px-4 py-3 rounded-lg border border-border bg-muted/20 hover:bg-amber-50/40 transition-colors"
     >
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-sm text-foreground truncate">
@@ -273,11 +293,17 @@ function CompanyEntryRow({
           href={entry.website_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs text-primary hover:underline flex items-center gap-1 mt-0.5 w-fit"
+          className="text-xs text-amber-600 hover:underline flex items-center gap-1 mt-0.5 w-fit"
         >
           <ExternalLink className="w-3 h-3" />
           {entry.website_url}
         </a>
+        {entry.username && (
+          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+            <User className="w-3 h-3" />
+            {entry.username}
+          </p>
+        )}
       </div>
       <div className="flex-shrink-0">
         <PasswordCell password={entry.password} />
@@ -287,7 +313,7 @@ function CompanyEntryRow({
         size="icon"
         data-ocid={`company.edit_button.${index}`}
         onClick={() => setEditing(true)}
-        className="h-7 w-7 text-muted-foreground hover:text-primary flex-shrink-0"
+        className="h-7 w-7 text-muted-foreground hover:text-amber-600 flex-shrink-0"
         aria-label={`Edit ${entry.name}`}
       >
         <Pencil className="w-3.5 h-3.5" />
@@ -315,6 +341,7 @@ function AddCompanyForm({ category }: { category: CompanyEntryCategory }) {
   const { mutate: addEntry, isPending } = useAddCompanyEntry();
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
+  const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
 
@@ -326,12 +353,14 @@ function AddCompanyForm({ category }: { category: CompanyEntryCategory }) {
         name: name.trim(),
         category,
         website_url: url.trim(),
+        username: userId,
         password: password,
       },
       {
         onSuccess: () => {
           setName("");
           setUrl("");
+          setUserId("");
           setPassword("");
           toast.success("Entry added successfully");
         },
@@ -343,12 +372,12 @@ function AddCompanyForm({ category }: { category: CompanyEntryCategory }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="pt-4 border-t border-border space-y-3"
+      className="pt-4 border-t border-amber-100 space-y-3"
     >
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+      <p className="text-xs font-medium text-amber-700 uppercase tracking-wide">
         Add New Entry
       </p>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="space-y-1">
           <Label htmlFor={`company-name-${category}`} className="text-xs">
             Company Name
@@ -376,6 +405,19 @@ function AddCompanyForm({ category }: { category: CompanyEntryCategory }) {
             className="h-8 text-sm"
             type="url"
             required
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`company-userid-${category}`} className="text-xs">
+            User ID
+          </Label>
+          <Input
+            id={`company-userid-${category}`}
+            data-ocid="company.input"
+            value={userId}
+            onChange={(e) => setUserId(e.target.value)}
+            placeholder="Username / User ID"
+            className="h-8 text-sm"
           />
         </div>
         <div className="space-y-1">
@@ -414,7 +456,7 @@ function AddCompanyForm({ category }: { category: CompanyEntryCategory }) {
         data-ocid="company.submit_button"
         disabled={isPending || !name.trim() || !url.trim()}
         size="sm"
-        className="h-8"
+        className="h-8 bg-amber-600 hover:bg-amber-700 text-white"
       >
         {isPending ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
@@ -448,12 +490,15 @@ function CompanyDirectorySection() {
   return (
     <section
       data-ocid="company.section"
-      className="bg-card border border-border rounded-xl overflow-hidden"
+      className="bg-card border border-amber-200 rounded-xl overflow-hidden"
     >
-      <div className="px-6 py-4 border-b border-border flex items-center gap-3">
-        <Building2 className="w-4 h-4 text-muted-foreground" />
-        <div>
-          <h2 className="font-semibold text-foreground">Company Directory</h2>
+      <div className="px-6 py-4 border-b border-amber-100 bg-amber-50/40 flex items-center gap-3">
+        <Building2 className="w-4 h-4 text-amber-600" />
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold text-foreground">Company Directory</h2>
+            <AdminOnlyBadge />
+          </div>
           <p className="text-sm text-muted-foreground mt-0.5">
             Save links and credentials for labs, suppliers, and insurance
             companies.
@@ -527,6 +572,7 @@ function AddResourceEntryForm({ categoryId }: { categoryId: bigint }) {
   const { mutate: addEntry, isPending } = useAddResourceEntry();
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
+  const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
 
@@ -534,11 +580,18 @@ function AddResourceEntryForm({ categoryId }: { categoryId: bigint }) {
     e.preventDefault();
     if (!name.trim() || !url.trim()) return;
     addEntry(
-      { categoryId, name: name.trim(), url: url.trim(), password },
+      {
+        categoryId,
+        name: name.trim(),
+        url: url.trim(),
+        username: userId,
+        password,
+      },
       {
         onSuccess: () => {
           setName("");
           setUrl("");
+          setUserId("");
           setPassword("");
           toast.success("Entry added");
         },
@@ -550,12 +603,12 @@ function AddResourceEntryForm({ categoryId }: { categoryId: bigint }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="mt-3 pt-3 border-t border-border space-y-2"
+      className="mt-3 pt-3 border-t border-amber-100 space-y-2"
     >
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+      <p className="text-xs font-medium text-amber-700 uppercase tracking-wide">
         Add Link
       </p>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
         <Input
           data-ocid="resource.entry.input"
           value={name}
@@ -574,6 +627,14 @@ function AddResourceEntryForm({ categoryId }: { categoryId: bigint }) {
           type="url"
           required
           aria-label="Entry URL"
+        />
+        <Input
+          data-ocid="resource.entry.input"
+          value={userId}
+          onChange={(e) => setUserId(e.target.value)}
+          placeholder="User ID (optional)"
+          className="h-8 text-sm"
+          aria-label="Entry User ID"
         />
         <div className="relative">
           <Input
@@ -606,7 +667,7 @@ function AddResourceEntryForm({ categoryId }: { categoryId: bigint }) {
         data-ocid="resource.entry.submit_button"
         disabled={isPending || !name.trim() || !url.trim()}
         size="sm"
-        className="h-8"
+        className="h-8 bg-amber-600 hover:bg-amber-700 text-white"
       >
         {isPending ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
@@ -632,6 +693,7 @@ function ResourceEntryRow({
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(entry.name);
   const [editUrl, setEditUrl] = useState(entry.url);
+  const [editUserId, setEditUserId] = useState(entry.username ?? "");
   const [editPassword, setEditPassword] = useState(entry.password);
   const [showEditPw, setShowEditPw] = useState(false);
 
@@ -642,6 +704,7 @@ function ResourceEntryRow({
         id: entry.id,
         name: editName.trim(),
         url: editUrl.trim(),
+        username: editUserId,
         password: editPassword,
       },
       {
@@ -658,6 +721,7 @@ function ResourceEntryRow({
     setEditing(false);
     setEditName(entry.name);
     setEditUrl(entry.url);
+    setEditUserId(entry.username ?? "");
     setEditPassword(entry.password);
   };
 
@@ -665,9 +729,9 @@ function ResourceEntryRow({
     return (
       <div
         data-ocid={`resource.entry.item.${index}`}
-        className="flex flex-col gap-2 px-4 py-3 rounded-lg border border-primary/30 bg-primary/5"
+        className="flex flex-col gap-2 px-4 py-3 rounded-lg border border-amber-200 bg-amber-50/50"
       >
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
           <Input
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
@@ -681,6 +745,12 @@ function ResourceEntryRow({
             placeholder="https://example.com"
             className="h-8 text-sm"
             type="url"
+          />
+          <Input
+            value={editUserId}
+            onChange={(e) => setEditUserId(e.target.value)}
+            placeholder="User ID"
+            className="h-8 text-sm"
           />
           <div className="relative">
             <Input
@@ -709,7 +779,7 @@ function ResourceEntryRow({
         <div className="flex gap-2">
           <Button
             size="sm"
-            className="h-7"
+            className="h-7 bg-amber-600 hover:bg-amber-700 text-white"
             onClick={handleSave}
             disabled={isSaving || !editName.trim() || !editUrl.trim()}
           >
@@ -737,7 +807,7 @@ function ResourceEntryRow({
   return (
     <div
       data-ocid={`resource.entry.item.${index}`}
-      className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border bg-muted/20 hover:bg-muted/40 transition-colors"
+      className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border bg-muted/20 hover:bg-amber-50/40 transition-colors"
     >
       <div className="flex-1 min-w-0">
         <p className="font-medium text-sm text-foreground truncate">
@@ -747,11 +817,17 @@ function ResourceEntryRow({
           href={entry.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs text-primary hover:underline flex items-center gap-1 mt-0.5 w-fit"
+          className="text-xs text-amber-600 hover:underline flex items-center gap-1 mt-0.5 w-fit"
         >
           <ExternalLink className="w-3 h-3" />
           <span className="truncate max-w-[240px]">{entry.url}</span>
         </a>
+        {entry.username && (
+          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+            <User className="w-3 h-3" />
+            {entry.username}
+          </p>
+        )}
       </div>
       <div className="flex-shrink-0">
         <PasswordCell password={entry.password} />
@@ -761,7 +837,7 @@ function ResourceEntryRow({
         size="icon"
         data-ocid={`resource.entry.edit_button.${index}`}
         onClick={() => setEditing(true)}
-        className="h-7 w-7 text-muted-foreground hover:text-foreground flex-shrink-0"
+        className="h-7 w-7 text-muted-foreground hover:text-amber-600 flex-shrink-0"
         aria-label={`Edit ${entry.name}`}
       >
         <Pencil className="w-3.5 h-3.5" />
@@ -834,10 +910,10 @@ function ResourceCategoryPanel({
   return (
     <div
       data-ocid={`resource.category.item.${index}`}
-      className="border border-border rounded-xl overflow-hidden"
+      className="border border-amber-100 rounded-xl overflow-hidden"
     >
       {/* Category header */}
-      <div className="flex items-center gap-2 px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors">
+      <div className="flex items-center gap-2 px-4 py-3 bg-amber-50/50 hover:bg-amber-50 transition-colors">
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
@@ -846,9 +922,9 @@ function ResourceCategoryPanel({
           aria-label={`${expanded ? "Collapse" : "Expand"} ${category.name}`}
         >
           {expanded ? (
-            <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <ChevronDown className="w-4 h-4 text-amber-500 flex-shrink-0" />
           ) : (
-            <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <ChevronRight className="w-4 h-4 text-amber-500 flex-shrink-0" />
           )}
           {renamingMode ? (
             <div
@@ -911,7 +987,7 @@ function ResourceCategoryPanel({
                 setRenamingMode(true);
                 setExpanded(true);
               }}
-              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              className="h-7 w-7 text-muted-foreground hover:text-amber-600"
               aria-label={`Rename ${category.name}`}
             >
               <Pencil className="w-3.5 h-3.5" />
@@ -992,12 +1068,15 @@ function ResourceLinksSection() {
   return (
     <section
       data-ocid="resource.section"
-      className="bg-card border border-border rounded-xl overflow-hidden"
+      className="bg-card border border-amber-200 rounded-xl overflow-hidden"
     >
-      <div className="px-6 py-4 border-b border-border flex items-center gap-3">
-        <Link2 className="w-4 h-4 text-muted-foreground" />
-        <div>
-          <h2 className="font-semibold text-foreground">Resource Links</h2>
+      <div className="px-6 py-4 border-b border-amber-100 bg-amber-50/40 flex items-center gap-3">
+        <Link2 className="w-4 h-4 text-amber-600" />
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold text-foreground">Resource Links</h2>
+            <AdminOnlyBadge />
+          </div>
           <p className="text-sm text-muted-foreground mt-0.5">
             Organize site links and credentials by custom categories.
           </p>
@@ -1021,7 +1100,7 @@ function ResourceLinksSection() {
             type="submit"
             data-ocid="resource.category.primary_button"
             disabled={isCreating || !newCategoryName.trim()}
-            className="h-9 whitespace-nowrap"
+            className="h-9 whitespace-nowrap bg-amber-600 hover:bg-amber-700 text-white"
           >
             {isCreating ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -1091,9 +1170,8 @@ export default function AdminPage() {
   const handleGenerate = () => {
     createInvite(undefined, {
       onSuccess: (token) => {
-        const url = `${window.location.origin}?invite=${token}`;
-        setNewInviteUrl(url);
-        toast.success("Invite link created!");
+        setNewInviteUrl(token);
+        toast.success("PIN created!");
       },
       onError: () => toast.error("Failed to create invite. Are you an admin?"),
     });
@@ -1102,13 +1180,12 @@ export default function AdminPage() {
   const handleCopyNew = () => {
     if (!newInviteUrl) return;
     navigator.clipboard.writeText(newInviteUrl);
-    toast.success("Copied to clipboard!");
+    toast.success("PIN copied!");
   };
 
   const handleCopyLink = (token: string) => {
-    const url = `${window.location.origin}?invite=${token}`;
-    navigator.clipboard.writeText(url);
-    toast.success("Invite link copied!");
+    navigator.clipboard.writeText(token);
+    toast.success("PIN copied!");
   };
 
   const handleRevoke = (token: string) => {
@@ -1187,10 +1264,10 @@ export default function AdminPage() {
 
   return (
     <div data-ocid="admin.page" className="flex flex-col h-full overflow-auto">
-      {/* Header */}
-      <div className="border-b border-border px-8 py-5 flex items-center gap-3 bg-card">
-        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-          <ShieldCheck className="w-5 h-5 text-primary" />
+      {/* Header — amber accent */}
+      <div className="border-b border-amber-200 px-8 py-5 flex items-center gap-3 bg-amber-50/60 border-l-4 border-l-amber-500">
+        <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center">
+          <ShieldCheck className="w-5 h-5 text-amber-600" />
         </div>
         <div>
           <h1 className="font-display text-lg text-foreground font-semibold">
@@ -1208,36 +1285,46 @@ export default function AdminPage() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="font-semibold text-foreground">
-                Generate Invite Link
+                Generate Team PIN
               </h2>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Share this link with a new team member. Each link is single-use.
+                Create a PIN and share it with a new team member to let them
+                join.
               </p>
             </div>
             <Button
               data-ocid="admin.generate_invite.button"
               onClick={handleGenerate}
               disabled={isCreating}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
             >
               {isCreating ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Plus className="mr-2 h-4 w-4" />
               )}
-              Generate Invite
+              Generate PIN
             </Button>
           </div>
 
           {newInviteUrl && (
-            <div className="flex gap-2 items-center">
-              <Input
-                readOnly
-                value={newInviteUrl}
-                className="font-mono text-xs bg-muted"
-                onClick={(e) => (e.target as HTMLInputElement).select()}
-              />
-              <Button variant="outline" size="icon" onClick={handleCopyNew}>
-                <Copy className="w-4 h-4" />
+            <div className="flex gap-3 items-center p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex-1">
+                <p className="text-xs text-amber-700 font-medium mb-1">
+                  New PIN — share this with your team member:
+                </p>
+                <span className="font-mono text-2xl font-bold text-amber-800 tracking-widest">
+                  {newInviteUrl}
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopyNew}
+                className="border-amber-300 text-amber-700 hover:bg-amber-100"
+              >
+                <Copy className="w-4 h-4 mr-1.5" />
+                Copy PIN
               </Button>
             </div>
           )}
@@ -1451,14 +1538,14 @@ export default function AdminPage() {
               <ShieldCheck className="w-10 h-10 text-muted-foreground/30 mb-3" />
               <p className="text-sm text-muted-foreground">No invites yet.</p>
               <p className="text-xs text-muted-foreground/70 mt-1">
-                Generate your first invite link above.
+                Generate your first PIN above.
               </p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[40%]">Token</TableHead>
+                  <TableHead className="w-[40%]">PIN</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -1471,8 +1558,8 @@ export default function AdminPage() {
                     data-ocid={`admin.invites.row.${idx + 1}`}
                   >
                     <TableCell>
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {invite.token.slice(0, 24)}…
+                      <span className="font-mono text-lg font-bold tracking-widest text-foreground">
+                        {invite.token}
                       </span>
                     </TableCell>
                     <TableCell>
@@ -1492,7 +1579,7 @@ export default function AdminPage() {
                               onClick={() => handleCopyLink(invite.token)}
                             >
                               <Copy className="w-3.5 h-3.5 mr-1.5" />
-                              Copy Link
+                              Copy PIN
                             </Button>
                             <Button
                               variant="ghost"

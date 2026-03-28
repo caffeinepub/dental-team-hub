@@ -8,16 +8,14 @@ import { useRegister } from "../hooks/useQueries";
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
-  const [token, setToken] = useState(
-    () => new URLSearchParams(window.location.search).get("invite") ?? "",
-  );
+  const [token, setToken] = useState("");
   const { mutate: register, isPending, error } = useRegister();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
     if (!token.trim()) {
-      toast.error("An invite code is required to join.");
+      toast.error("A PIN is required to join. Ask your admin for your PIN.");
       return;
     }
     register(
@@ -44,7 +42,7 @@ export default function RegisterPage() {
             Welcome to the team!
           </h1>
           <p className="text-sm text-muted-foreground">
-            Tell us your name so your colleagues know who you are.
+            Enter your name and the PIN your admin gave you.
           </p>
         </div>
 
@@ -69,15 +67,15 @@ export default function RegisterPage() {
 
           <div className="space-y-2">
             <Label htmlFor="inviteCode" className="text-sm font-medium">
-              Invite code
+              PIN
             </Label>
             <Input
               id="inviteCode"
               data-ocid="register.token_input"
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              placeholder="Paste your invite code here"
-              maxLength={128}
+              placeholder="Enter your 6-digit PIN"
+              maxLength={6}
             />
           </div>
 

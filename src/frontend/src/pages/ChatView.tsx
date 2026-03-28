@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { Send } from "lucide-react";
+import { MessageSquare, Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useAppContext } from "../context/AppContext";
@@ -78,9 +78,12 @@ export default function ChatView() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex-shrink-0 px-6 py-4 border-b border-border bg-card">
-        <h2 className="text-lg font-semibold text-foreground">Team Chat</h2>
+      {/* Header — blue accent */}
+      <div className="flex-shrink-0 px-6 py-4 border-b border-blue-100 bg-blue-50/60 border-l-4 border-l-blue-500">
+        <div className="flex items-center gap-2">
+          <MessageSquare className="w-4 h-4 text-blue-600" />
+          <h2 className="text-lg font-semibold text-foreground">Team Chat</h2>
+        </div>
         <p className="text-xs text-muted-foreground mt-0.5">
           Messages to the whole team
         </p>
@@ -96,13 +99,14 @@ export default function ChatView() {
             onKeyDown={handleKeyDown}
             placeholder="Message the team..."
             disabled={isPending}
-            className="flex-1"
+            className="flex-1 border-blue-200 focus-visible:ring-blue-400"
           />
           <Button
             data-ocid="chat.submit_button"
             onClick={handleSend}
             disabled={isPending || !input.trim()}
             size="icon"
+            className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             <Send className="w-4 h-4" />
           </Button>
@@ -163,7 +167,7 @@ export default function ChatView() {
                       onClick={() =>
                         openPrivateThread(msg.sender.toString(), msg.senderName)
                       }
-                      className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0 text-xs font-semibold text-primary-foreground hover:opacity-80 transition-opacity mt-1"
+                      className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0 text-xs font-semibold text-white hover:opacity-80 transition-opacity mt-1"
                       title={`Message ${msg.senderName} privately`}
                     >
                       {getInitials(msg.senderName)}
@@ -184,7 +188,7 @@ export default function ChatView() {
                             msg.senderName,
                           )
                         }
-                        className="text-xs font-medium text-foreground/70 mb-1 hover:text-primary transition-colors"
+                        className="text-xs font-medium text-foreground/70 mb-1 hover:text-blue-600 transition-colors"
                       >
                         {msg.senderName}
                       </button>
@@ -193,7 +197,7 @@ export default function ChatView() {
                       className={cn(
                         "px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed",
                         isMine
-                          ? "bg-primary text-primary-foreground msg-self rounded-tr-sm"
+                          ? "bg-blue-600 text-white msg-self rounded-tr-sm"
                           : "bg-card border border-border text-foreground msg-other rounded-tl-sm shadow-xs",
                       )}
                     >

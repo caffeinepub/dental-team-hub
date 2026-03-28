@@ -40,18 +40,24 @@ export default function MainLayout({ userProfile }: Props) {
       label: "Team Chat",
       icon: MessageSquare,
       ocid: "nav.chat.link",
+      activeClass: "bg-blue-500/10 text-blue-600",
+      dotColor: "bg-blue-500",
     },
     {
       type: "tasks" as const,
       label: "Tasks",
       icon: CheckSquare,
       ocid: "nav.tasks.link",
+      activeClass: "bg-violet-500/10 text-violet-600",
+      dotColor: "bg-violet-500",
     },
     {
       type: "directory" as const,
       label: "Directory",
       icon: Users,
       ocid: "nav.directory.link",
+      activeClass: "bg-teal-500/10 text-teal-600",
+      dotColor: "bg-teal-500",
     },
   ];
 
@@ -95,23 +101,38 @@ export default function MainLayout({ userProfile }: Props) {
 
         {/* Nav */}
         <nav className="flex-1 p-3 space-y-1">
-          {navItems.map(({ type, label, icon: Icon, ocid }) => (
-            <button
-              type="button"
-              key={type}
-              data-ocid={ocid}
-              onClick={() => setActiveView({ type })}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left",
-                isNavActive(type)
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
-              )}
-            >
-              <Icon className="w-4 h-4 flex-shrink-0" />
-              {label}
-            </button>
-          ))}
+          {navItems.map(
+            ({ type, label, icon: Icon, ocid, activeClass, dotColor }) => {
+              const active = isNavActive(type);
+              return (
+                <button
+                  type="button"
+                  key={type}
+                  data-ocid={ocid}
+                  onClick={() => setActiveView({ type })}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left",
+                    active
+                      ? activeClass
+                      : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+                  )}
+                >
+                  <div className="relative flex-shrink-0">
+                    <Icon className="w-4 h-4" />
+                    {active && (
+                      <span
+                        className={cn(
+                          "absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full",
+                          dotColor,
+                        )}
+                      />
+                    )}
+                  </div>
+                  {label}
+                </button>
+              );
+            },
+          )}
 
           {isAdmin && (
             <button
@@ -121,11 +142,16 @@ export default function MainLayout({ userProfile }: Props) {
               className={cn(
                 "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left",
                 isNavActive("admin")
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  ? "bg-amber-500/10 text-amber-600"
                   : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
               )}
             >
-              <ShieldCheck className="w-4 h-4 flex-shrink-0" />
+              <div className="relative flex-shrink-0">
+                <ShieldCheck className="w-4 h-4" />
+                {isNavActive("admin") && (
+                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-amber-500" />
+                )}
+              </div>
               Admin
             </button>
           )}

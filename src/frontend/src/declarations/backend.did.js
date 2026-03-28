@@ -33,6 +33,7 @@ export const UserProfile = IDL.Record({ 'name' : IDL.Text, 'lastSeen' : Time });
 export const CompanyEntry = IDL.Record({
   'id' : IDL.Nat,
   'website_url' : IDL.Text,
+  'username' : IDL.Text,
   'password' : IDL.Text,
   'name' : IDL.Text,
   'category' : CompanyEntryCategory,
@@ -69,6 +70,7 @@ export const ResourceEntry = IDL.Record({
   'id' : IDL.Nat,
   'url' : IDL.Text,
   'categoryId' : IDL.Nat,
+  'username' : IDL.Text,
   'password' : IDL.Text,
   'name' : IDL.Text,
 });
@@ -86,13 +88,13 @@ export const Task = IDL.Record({
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'addCompanyEntry' : IDL.Func(
-      [IDL.Text, CompanyEntryCategory, IDL.Text, IDL.Text],
+      [IDL.Text, CompanyEntryCategory, IDL.Text, IDL.Text, IDL.Text],
       [],
       [],
     ),
   'addMessage' : IDL.Func([IDL.Text], [], []),
   'addResourceEntry' : IDL.Func(
-      [IDL.Nat, IDL.Text, IDL.Text, IDL.Text],
+      [IDL.Nat, IDL.Text, IDL.Text, IDL.Text, IDL.Text],
       [],
       [],
     ),
@@ -110,8 +112,13 @@ export const idlService = IDL.Service({
   'deleteResourceCategory' : IDL.Func([IDL.Nat], [], []),
   'deleteResourceEntry' : IDL.Func([IDL.Nat], [], []),
   'deleteTask' : IDL.Func([IDL.Nat], [], []),
+  'editCompanyEntry' : IDL.Func(
+      [IDL.Nat, IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+      [],
+      [],
+    ),
   'editResourceEntry' : IDL.Func(
-      [IDL.Nat, IDL.Text, IDL.Text, IDL.Text],
+      [IDL.Nat, IDL.Text, IDL.Text, IDL.Text, IDL.Text],
       [],
       [],
     ),
@@ -185,6 +192,7 @@ export const idlFactory = ({ IDL }) => {
   const CompanyEntry = IDL.Record({
     'id' : IDL.Nat,
     'website_url' : IDL.Text,
+    'username' : IDL.Text,
     'password' : IDL.Text,
     'name' : IDL.Text,
     'category' : CompanyEntryCategory,
@@ -218,6 +226,7 @@ export const idlFactory = ({ IDL }) => {
     'id' : IDL.Nat,
     'url' : IDL.Text,
     'categoryId' : IDL.Nat,
+    'username' : IDL.Text,
     'password' : IDL.Text,
     'name' : IDL.Text,
   });
@@ -235,13 +244,13 @@ export const idlFactory = ({ IDL }) => {
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'addCompanyEntry' : IDL.Func(
-        [IDL.Text, CompanyEntryCategory, IDL.Text, IDL.Text],
+        [IDL.Text, CompanyEntryCategory, IDL.Text, IDL.Text, IDL.Text],
         [],
         [],
       ),
     'addMessage' : IDL.Func([IDL.Text], [], []),
     'addResourceEntry' : IDL.Func(
-        [IDL.Nat, IDL.Text, IDL.Text, IDL.Text],
+        [IDL.Nat, IDL.Text, IDL.Text, IDL.Text, IDL.Text],
         [],
         [],
       ),
@@ -259,8 +268,13 @@ export const idlFactory = ({ IDL }) => {
     'deleteResourceCategory' : IDL.Func([IDL.Nat], [], []),
     'deleteResourceEntry' : IDL.Func([IDL.Nat], [], []),
     'deleteTask' : IDL.Func([IDL.Nat], [], []),
+    'editCompanyEntry' : IDL.Func(
+        [IDL.Nat, IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+        [],
+        [],
+      ),
     'editResourceEntry' : IDL.Func(
-        [IDL.Nat, IDL.Text, IDL.Text, IDL.Text],
+        [IDL.Nat, IDL.Text, IDL.Text, IDL.Text, IDL.Text],
         [],
         [],
       ),
